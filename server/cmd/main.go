@@ -8,16 +8,13 @@ import (
 )
 
 func main() {
-	chatPacket := &packets.Packet{
-		SenderId: 779,
-		Msg: packets.NewChat("Hello, Filipe!"),
-	}
-	fmt.Println(chatPacket)
+	data := []byte{8, 139, 6, 18, 16, 10, 14, 72, 101, 108, 108, 111, 44, 32, 70, 105, 108, 105, 112, 101, 33}
 
-	data, err := proto.Marshal(chatPacket)
+	packet := &packets.Packet{}
+	err := proto.Unmarshal(data, packet)
 	if err != nil {
 		panic(err)
 	}
 
-	fmt.Println(data)
+	fmt.Println(packet)
 }
