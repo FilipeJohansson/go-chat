@@ -8,21 +8,13 @@ import (
 func main() {
 	chatPacket := &packets.Packet{
 		SenderId: 779,
-		Msg: &packets.Packet_Chat{
-			Chat: &packets.ChatMessage{
-				Msg: "Hello, Filipe!",
-			},
-		},
+		Msg: packets.NewChat("Hello, Filipe!"),
 	}
 	fmt.Println(chatPacket)
 
 	idPacket := &packets.Packet{
 		SenderId: 779,
-		Msg: &packets.Packet_Id{
-			Id: &packets.IdMessage{
-				Id: 779,
-			},
-		},
+		Msg: packets.NewId(779),
 	}
 	fmt.Println(idPacket)
 }
