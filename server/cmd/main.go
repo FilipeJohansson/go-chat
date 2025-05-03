@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"server/pkg/packets"
+
+	"google.golang.org/protobuf/proto"
 )
 
 func main() {
@@ -12,9 +14,10 @@ func main() {
 	}
 	fmt.Println(chatPacket)
 
-	idPacket := &packets.Packet{
-		SenderId: 779,
-		Msg: packets.NewId(779),
+	data, err := proto.Marshal(chatPacket)
+	if err != nil {
+		panic(err)
 	}
-	fmt.Println(idPacket)
+
+	fmt.Println(data)
 }
