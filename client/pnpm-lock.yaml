@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@bufbuild/protobuf':
+        specifier: ^2.2.5
+        version: 2.2.5
       classnames:
         specifier: ^2.5.1
         version: 2.5.1
@@ -20,6 +23,9 @@ importers:
       react-dom:
         specifier: 19.1.0
         version: 19.1.0(react@19.1.0)
+      ts-protoc-gen:
+        specifier: ^0.15.0
+        version: 0.15.0
     devDependencies:
       '@eslint/js':
         specifier: 9.25.1
@@ -922,6 +928,9 @@ packages:
     resolution: {integrity: sha512-iInW14XItCXET01CQFqudPOWP2jYMl7T+QRQT+UNcR/iQncN/F0UNpgd76iFkBPgNQb4+X3LV9tLJYzwh+Gl3A==}
     engines: {node: '>=18'}
 
+  google-protobuf@3.21.4:
+    resolution: {integrity: sha512-MnG7N936zcKTco4Jd2PX2U96Kf9PxygAPKBug+74LHzmHXmceN16MmRcdgZv+DGef/S9YvQAfRsNCn4cjf9yyQ==}
+
   graphemer@1.4.0:
     resolution: {integrity: sha512-EtKwoO6kxCL9WO5xipiHTZlSzBm7WLT627TqC/uVRd0HKmq8NXyebnNYxDoBi7wt8eTWrUrKXCOVaFq9x1kgag==}
 
@@ -1401,6 +1410,10 @@ packages:
 
   ts-proto@2.7.0:
     resolution: {integrity: sha512-BGHjse2wTOeswOqnnPKinpxmbaRd882so/e1En6ww59YMG7AO9Kg4vPpJcbVfrpBixPRDqHafXD/RDyd2T99GA==}
+    hasBin: true
+
+  ts-protoc-gen@0.15.0:
+    resolution: {integrity: sha512-TycnzEyrdVDlATJ3bWFTtra3SCiEP0W0vySXReAuEygXCUr1j2uaVyL0DhzjwuUdQoW5oXPwk6oZWeA0955V+g==}
     hasBin: true
 
   type-check@0.4.0:
@@ -2323,6 +2336,8 @@ snapshots:
 
   globals@16.0.0: {}
 
+  google-protobuf@3.21.4: {}
+
   graphemer@1.4.0: {}
 
   has-flag@4.0.0: {}
@@ -2763,6 +2778,10 @@ snapshots:
       case-anything: 2.1.13
       ts-poet: 6.11.0
       ts-proto-descriptors: 2.0.0
+
+  ts-protoc-gen@0.15.0:
+    dependencies:
+      google-protobuf: 3.21.4
 
   type-check@0.4.0:
     dependencies:

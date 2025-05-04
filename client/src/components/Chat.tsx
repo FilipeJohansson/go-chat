@@ -1,13 +1,13 @@
 import { Send } from "lucide-react";
 import { useState } from "react";
-import { ChatMessage, User } from "../App";
-import { Message } from "./Message";
+import { Message, User } from "../App";
 import { OnlineUser } from "./OnlineUser";
 import { Painel } from "./Painel";
+import { UserMessage } from "./UserMessage";
 
 interface ChatProps {
   connectedUserId: number,
-  messages: ChatMessage[],
+  messages: Message[],
   usersOnline: User[],
   onSendMessage: (message: string) => void,
 }
@@ -25,8 +25,8 @@ export function Chat({ connectedUserId, messages, usersOnline, onSendMessage }: 
       <div className="grid grid-cols-4 gap-3 h-[80%]">
         {/* Messages */}
         <Painel className="col-span-3 flex flex-col">
-          {messages.map((m: ChatMessage) => (
-            <Message key={`${m.user.id}_${m.timestamp}`} message={m} isConnectedUser={connectedUserId === m.user.id} />
+          {messages.map((m: Message) => (
+            <UserMessage key={`${m.user.id}_${m.timestamp}`} message={m} isConnectedUser={connectedUserId === m.user.id} />
           ))}
         </Painel>
 

@@ -1,11 +1,11 @@
-import { ChatMessage } from "../App"
+import { Message } from "../App"
 
 interface MessageProps {
-  message: ChatMessage,
+  message: Message,
   isConnectedUser: boolean,
 }
 
-export function Message({ message, isConnectedUser }: MessageProps) {
+export function UserMessage({ message, isConnectedUser }: MessageProps) {
   return (
     <span className="flex flex-col">
       <span className="font-bold">{isConnectedUser ? 'You' : message.user.name}</span>
