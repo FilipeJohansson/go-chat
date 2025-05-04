@@ -47,7 +47,8 @@ func (c *WebSocketClient) Id() uint64 {
 }
 
 func (c *WebSocketClient) ProcessMessage(senderId uint64, message packets.Msg) {
-
+	c.logger.Printf("Received message: %T from client - echoing back...", message)
+	c.SocketSend(message)
 }
 
 func (c *WebSocketClient) Initialize(id uint64) {
@@ -110,6 +111,7 @@ func (c *WebSocketClient) ReadPump() {
 func (c *WebSocketClient) WritePump() {
 	defer func() {
 		c.logger.Println("Closing write pump")
+		c.Close("write pump closed")
 	}()
 
 	for packet := range c.sendChan {
@@ -129,9 +131,7 @@ func (c *WebSocketClient) WritePump() {
 		if err != nil {
 			c.logger.Printf("error writing %T packet: %v", packet.Msg, err)
 			continue
-		}	
-
-		writer.Write([]byte{'\n'})
+		}
 	
 		if err = writer.Close(); err != nil {
 			c.logger.Printf("error closing writer for %T packet: %v", packet.Msg, err)
@@ -146,7 +146,9 @@ func (c *WebSocketClient) Close(reason string) {
 	c.hub.UnregisterChan <- c
 	c.conn.Close()
 
-	if _, closed := <- c.sendChan; !closed {
+	select {
+	case <-c.sendChan:
+	default:
 		close(c.sendChan)
 	}
 }

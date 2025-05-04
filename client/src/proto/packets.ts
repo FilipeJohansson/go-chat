@@ -17,10 +17,14 @@ export interface IdMessage {
   id: number;
 }
 
+export interface PingMessage {
+}
+
 export interface Packet {
   senderId: number;
   chat?: ChatMessage | undefined;
   id?: IdMessage | undefined;
+  ping?: PingMessage | undefined;
 }
 
 function createBaseChatMessage(): ChatMessage {
@@ -139,8 +143,51 @@ export const IdMessage: MessageFns<IdMessage> = {
   },
 };
 
+function createBasePingMessage(): PingMessage {
+  return {};
+}
+
+export const PingMessage: MessageFns<PingMessage> = {
+  encode(_: PingMessage, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): PingMessage {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBasePingMessage();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(_: any): PingMessage {
+    return {};
+  },
+
+  toJSON(_: PingMessage): unknown {
+    const obj: any = {};
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<PingMessage>, I>>(base?: I): PingMessage {
+    return PingMessage.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<PingMessage>, I>>(_: I): PingMessage {
+    const message = createBasePingMessage();
+    return message;
+  },
+};
+
 function createBasePacket(): Packet {
-  return { senderId: 0, chat: undefined, id: undefined };
+  return { senderId: 0, chat: undefined, id: undefined, ping: undefined };
 }
 
 export const Packet: MessageFns<Packet> = {
@@ -153,6 +200,9 @@ export const Packet: MessageFns<Packet> = {
     }
     if (message.id !== undefined) {
       IdMessage.encode(message.id, writer.uint32(26).fork()).join();
+    }
+    if (message.ping !== undefined) {
+      PingMessage.encode(message.ping, writer.uint32(34).fork()).join();
     }
     return writer;
   },
@@ -188,6 +238,14 @@ export const Packet: MessageFns<Packet> = {
           message.id = IdMessage.decode(reader, reader.uint32());
           continue;
         }
+        case 4: {
+          if (tag !== 34) {
+            break;
+          }
+
+          message.ping = PingMessage.decode(reader, reader.uint32());
+          continue;
+        }
       }
       if ((tag & 7) === 4 || tag === 0) {
         break;
@@ -202,6 +260,7 @@ export const Packet: MessageFns<Packet> = {
       senderId: isSet(object.senderId) ? globalThis.Number(object.senderId) : 0,
       chat: isSet(object.chat) ? ChatMessage.fromJSON(object.chat) : undefined,
       id: isSet(object.id) ? IdMessage.fromJSON(object.id) : undefined,
+      ping: isSet(object.ping) ? PingMessage.fromJSON(object.ping) : undefined,
     };
   },
 
@@ -216,6 +275,9 @@ export const Packet: MessageFns<Packet> = {
     if (message.id !== undefined) {
       obj.id = IdMessage.toJSON(message.id);
     }
+    if (message.ping !== undefined) {
+      obj.ping = PingMessage.toJSON(message.ping);
+    }
     return obj;
   },
 
@@ -229,6 +291,9 @@ export const Packet: MessageFns<Packet> = {
       ? ChatMessage.fromPartial(object.chat)
       : undefined;
     message.id = (object.id !== undefined && object.id !== null) ? IdMessage.fromPartial(object.id) : undefined;
+    message.ping = (object.ping !== undefined && object.ping !== null)
+      ? PingMessage.fromPartial(object.ping)
+      : undefined;
     return message;
   },
 };

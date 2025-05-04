@@ -109,6 +109,42 @@ func (x *IdMessage) GetId() uint64 {
 	return 0
 }
 
+type PingMessage struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PingMessage) Reset() {
+	*x = PingMessage{}
+	mi := &file_packets_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PingMessage) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PingMessage) ProtoMessage() {}
+
+func (x *PingMessage) ProtoReflect() protoreflect.Message {
+	mi := &file_packets_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PingMessage.ProtoReflect.Descriptor instead.
+func (*PingMessage) Descriptor() ([]byte, []int) {
+	return file_packets_proto_rawDescGZIP(), []int{2}
+}
+
 type Packet struct {
 	state    protoimpl.MessageState `protogen:"open.v1"`
 	SenderId uint64                 `protobuf:"varint,1,opt,name=sender_id,json=senderId,proto3" json:"sender_id,omitempty"`
@@ -116,6 +152,7 @@ type Packet struct {
 	//
 	//	*Packet_Chat
 	//	*Packet_Id
+	//	*Packet_Ping
 	Msg           isPacket_Msg `protobuf_oneof:"msg"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -123,7 +160,7 @@ type Packet struct {
 
 func (x *Packet) Reset() {
 	*x = Packet{}
-	mi := &file_packets_proto_msgTypes[2]
+	mi := &file_packets_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -135,7 +172,7 @@ func (x *Packet) String() string {
 func (*Packet) ProtoMessage() {}
 
 func (x *Packet) ProtoReflect() protoreflect.Message {
-	mi := &file_packets_proto_msgTypes[2]
+	mi := &file_packets_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -148,7 +185,7 @@ func (x *Packet) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Packet.ProtoReflect.Descriptor instead.
 func (*Packet) Descriptor() ([]byte, []int) {
-	return file_packets_proto_rawDescGZIP(), []int{2}
+	return file_packets_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *Packet) GetSenderId() uint64 {
@@ -183,6 +220,15 @@ func (x *Packet) GetId() *IdMessage {
 	return nil
 }
 
+func (x *Packet) GetPing() *PingMessage {
+	if x != nil {
+		if x, ok := x.Msg.(*Packet_Ping); ok {
+			return x.Ping
+		}
+	}
+	return nil
+}
+
 type isPacket_Msg interface {
 	isPacket_Msg()
 }
@@ -195,9 +241,15 @@ type Packet_Id struct {
 	Id *IdMessage `protobuf:"bytes,3,opt,name=id,proto3,oneof"`
 }
 
+type Packet_Ping struct {
+	Ping *PingMessage `protobuf:"bytes,4,opt,name=ping,proto3,oneof"`
+}
+
 func (*Packet_Chat) isPacket_Msg() {}
 
 func (*Packet_Id) isPacket_Msg() {}
+
+func (*Packet_Ping) isPacket_Msg() {}
 
 var File_packets_proto protoreflect.FileDescriptor
 
@@ -207,11 +259,13 @@ const file_packets_proto_rawDesc = "" +
 	"\vChatMessage\x12\x10\n" +
 	"\x03msg\x18\x01 \x01(\tR\x03msg\"\x1b\n" +
 	"\tIdMessage\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\x04R\x02id\"~\n" +
+	"\x02id\x18\x01 \x01(\x04R\x02id\"\r\n" +
+	"\vPingMessage\"\xaa\x01\n" +
 	"\x06Packet\x12\x1b\n" +
 	"\tsender_id\x18\x01 \x01(\x04R\bsenderId\x12*\n" +
 	"\x04chat\x18\x02 \x01(\v2\x14.packets.ChatMessageH\x00R\x04chat\x12$\n" +
-	"\x02id\x18\x03 \x01(\v2\x12.packets.IdMessageH\x00R\x02idB\x05\n" +
+	"\x02id\x18\x03 \x01(\v2\x12.packets.IdMessageH\x00R\x02id\x12*\n" +
+	"\x04ping\x18\x04 \x01(\v2\x14.packets.PingMessageH\x00R\x04pingB\x05\n" +
 	"\x03msgB\rZ\vpkg/packetsb\x06proto3"
 
 var (
@@ -226,20 +280,22 @@ func file_packets_proto_rawDescGZIP() []byte {
 	return file_packets_proto_rawDescData
 }
 
-var file_packets_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_packets_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_packets_proto_goTypes = []any{
 	(*ChatMessage)(nil), // 0: packets.ChatMessage
 	(*IdMessage)(nil),   // 1: packets.IdMessage
-	(*Packet)(nil),      // 2: packets.Packet
+	(*PingMessage)(nil), // 2: packets.PingMessage
+	(*Packet)(nil),      // 3: packets.Packet
 }
 var file_packets_proto_depIdxs = []int32{
 	0, // 0: packets.Packet.chat:type_name -> packets.ChatMessage
 	1, // 1: packets.Packet.id:type_name -> packets.IdMessage
-	2, // [2:2] is the sub-list for method output_type
-	2, // [2:2] is the sub-list for method input_type
-	2, // [2:2] is the sub-list for extension type_name
-	2, // [2:2] is the sub-list for extension extendee
-	0, // [0:2] is the sub-list for field type_name
+	2, // 2: packets.Packet.ping:type_name -> packets.PingMessage
+	3, // [3:3] is the sub-list for method output_type
+	3, // [3:3] is the sub-list for method input_type
+	3, // [3:3] is the sub-list for extension type_name
+	3, // [3:3] is the sub-list for extension extendee
+	0, // [0:3] is the sub-list for field type_name
 }
 
 func init() { file_packets_proto_init() }
@@ -247,9 +303,10 @@ func file_packets_proto_init() {
 	if File_packets_proto != nil {
 		return
 	}
-	file_packets_proto_msgTypes[2].OneofWrappers = []any{
+	file_packets_proto_msgTypes[3].OneofWrappers = []any{
 		(*Packet_Chat)(nil),
 		(*Packet_Id)(nil),
+		(*Packet_Ping)(nil),
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
@@ -257,7 +314,7 @@ func file_packets_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_packets_proto_rawDesc), len(file_packets_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   3,
+			NumMessages:   4,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

@@ -1,6 +1,6 @@
 import { Send } from "lucide-react";
 import { useState } from "react";
-import { Message, User } from "../App";
+import { Message, User } from "../internal/useWebSocket";
 import { OnlineUser } from "./OnlineUser";
 import { Painel } from "./Painel";
 import { UserMessage } from "./UserMessage";

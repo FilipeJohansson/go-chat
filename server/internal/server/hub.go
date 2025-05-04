@@ -66,7 +66,7 @@ func (h *Hub) Run() {
 		case client := <-h.RegisterChan:
 			client.Initialize(uint64(len(h.Clients))) //! Check about concurrency and lock
 		case client := <- h.UnregisterChan:
-			h.Clients[client.Id()] = nil
+			delete(h.Clients, client.Id())
 		case packet := <-h.BroadcastChan:
 			for id, client := range h.Clients {
 				if id != packet.SenderId {
