@@ -85,7 +85,7 @@ func (h *Hub) Serve(
 	log.Println("New client connected from", request.RemoteAddr)
 	client, err := getNewClient(h, writter, request)
 	if err != nil {
-		log.Printf("Error obtaining client form new connection: %v\n", err)
+		log.Printf("Error obtaining client for new connection: %v\n", err)
 		return
 	}
 
