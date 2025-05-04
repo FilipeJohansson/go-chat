@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Chat } from "./components/Chat";
-import { ChatMessage, Packet } from "./proto/packets";
+import { Packet } from "./proto/packets";
 
 export interface User {
   id: number,
@@ -18,16 +18,9 @@ export function App() {
   const [usersOnline, setUsersOnline] = useState([{ id: 0, name: 'Filipe Johansson' }] as User[])
   const [messages, setMessages] = useState([{ timestamp: Date.now(), user: { id: 0, name: 'Filipe Johansson'}, message: 'This is a test'}] as Message[])
 
-  let chatMessage: ChatMessage = ChatMessage.create({
-    msg: "Hello, Filipe!"
-  })
-  let packet: Packet = Packet.create({
-    senderId: 779,
-    chat: chatMessage
-  })
-  
-  let data = Packet.encode(packet).finish()
-  console.log('data', data)
+  let data: Uint8Array = new Uint8Array([8, 139, 6, 18, 16, 10, 14, 72, 101, 108, 108, 111, 44, 32, 70, 105, 108, 105, 112, 101, 33])
+  let packet = Packet.decode(data)
+  console.log(packet)
 
   const onSendMessage = (message: string) => {
     onReceiveMessage({ user: connectedUser, message })
