@@ -68,7 +68,8 @@ func (h *Hub) Run() {
 			client.Initialize(h.Clients.Add(client))
 			h.Clients.ForEach(func(cId uint64, c ClientInterfacer) {
 				if cId != client.Id() {
-					c.PassToPeer(packets.NewRegister(cId), cId)
+					// Already connected client (c) is forwarding their register to the newer client (client)
+					c.PassToPeer(packets.NewRegister(cId), client.Id())
 				}
 			})
 		case client := <- h.UnregisterChan:
