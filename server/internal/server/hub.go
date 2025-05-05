@@ -3,6 +3,9 @@ package server
 import (
 	"log"
 	"net/http"
+	"sort"
+
+	"time"
 
 	"server/internal/server/objects"
 	"server/pkg/packets"
@@ -37,23 +40,33 @@ type ClientInterfacer interface {
 	Close(reason string)
 }
 
+type StoragedMessage struct {
+	Timestamp	time.Time
+	Msg				*packets.Packet_Chat
+	SenderId	uint64
+}
+
 // The hub is the central point of communication between all connected clients
 type Hub struct {
-	Clients *objects.SharedCollection[ClientInterfacer]
+	Clients					*objects.SharedCollection[ClientInterfacer]
+
+	// Last messages sent from clients, so it can be sent to new clients
+	LastMessages		*objects.SharedCollection[StoragedMessage]
 
 	// Packets in this channel will be processed by all connected clients except the sender
-	BroadcastChan chan *packets.Packet
+	BroadcastChan		chan *packets.Packet
 
 	// Clients in this channel will be registered to the hub
-	RegisterChan chan ClientInterfacer
+	RegisterChan		chan ClientInterfacer
 
 	// Clients in this channel will be unregistered from the hub
-	UnregisterChan chan ClientInterfacer
+	UnregisterChan	chan ClientInterfacer
 }
 
 func NewHub() *Hub {
 	return &Hub{
 		Clients: 				objects.NewSharedCollection[ClientInterfacer](),
+		LastMessages:		objects.NewSharedCollection[StoragedMessage](),
 		BroadcastChan: 	make(chan *packets.Packet, 256),
 		RegisterChan: 	make(chan ClientInterfacer),
 		UnregisterChan: make(chan ClientInterfacer),
@@ -65,13 +78,8 @@ func (h *Hub) Run() {
 	for {
 		select {
 		case client := <-h.RegisterChan:
+			h.RemoveOldMessages(h.LastMessages)
 			client.Initialize(h.Clients.Add(client))
-			h.Clients.ForEach(func(cId uint64, c ClientInterfacer) {
-				if cId != client.Id() {
-					// Already connected client (c) is forwarding their register to the newer client (client)
-					c.PassToPeer(packets.NewRegister(cId), client.Id())
-				}
-			})
 		case client := <- h.UnregisterChan:
 			client.Broadcast(packets.NewUnregister(client.Id()))
 			h.Clients.Remove(client.Id())
@@ -101,4 +109,25 @@ func (h *Hub) Serve(
 
 	go client.WritePump()
 	go client.ReadPump()
+}
+
+func (h *Hub) OrderLastMessages(lastMessages *objects.SharedCollection[StoragedMessage]) []StoragedMessage {
+	messages := make([]StoragedMessage, 0, lastMessages.Len())
+	lastMessages.ForEach(func(id uint64, sm StoragedMessage) {
+		messages = append(messages, sm)
+	})
+
+	sort.Slice(messages, func(i, j int) bool {
+		return messages[i].Timestamp.Before(messages[j].Timestamp)
+	})
+
+	return messages
+}
+
+func (h *Hub) RemoveOldMessages(lastMessages *objects.SharedCollection[StoragedMessage]) {
+	lastMessages.ForEach(func(id uint64, sm StoragedMessage) {
+		if time.Since(sm.Timestamp) >= 5*time.Minute {
+			lastMessages.Remove(id)
+		}
+	})
 }

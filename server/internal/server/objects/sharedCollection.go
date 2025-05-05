@@ -51,7 +51,7 @@ func (s *SharedCollection[T]) Remove(id uint64) {
 }
 
 // Call the callback function for each object in the map
-func (s *SharedCollection[T]) ForEach(callback func(uint64, T)) {
+func (s *SharedCollection[T]) ForEach(callback func(id uint64, obj T)) {
 	// Create a local copy while holding the lock
 	s.mapMux.Lock()
 	localCopy := make(map[uint64]T, len(s.objectMap))

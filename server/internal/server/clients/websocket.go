@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"time"
 
 	"server/internal/server"
 	"server/pkg/packets"
@@ -59,11 +60,24 @@ func (c *WebSocketClient) Initialize(id uint64) {
 	c.id = id
 	c.logger.SetPrefix(fmt.Sprintf("Client %d: ", c.id))
 
+	c.logger.Printf("Sending ID to client")
 	c.SocketSend(packets.NewId(c.id))
-	c.logger.Printf("Send ID to client")
 
-	c.Broadcast(packets.NewRegister(c.id))
 	c.logger.Printf("Broadcasting new client connected")
+	c.Broadcast(packets.NewRegister(c.id))
+
+	c.logger.Printf("Fowarding already connected users to client")
+	c.hub.Clients.ForEach(func(clientId uint64, client server.ClientInterfacer) {
+		if clientId != c.Id() {
+			// Already connected client (client) is forwarding their register to the newer client (c)
+			client.PassToPeer(packets.NewRegister(clientId), c.Id())
+		}
+	})
+
+	c.logger.Printf("Sending last messages to the client")
+	for _, sm := range c.hub.OrderLastMessages(c.hub.LastMessages) {
+		c.SocketSendAs(sm.Msg, sm.SenderId)
+	}
 }
 
 func (c *WebSocketClient) SocketSend(message packets.Msg) {
@@ -116,8 +130,14 @@ func (c *WebSocketClient) ReadPump() {
 			continue
 		}
 
-		if packet.SenderId == 0 {
-			packet.SenderId = c.id
+		packet.SenderId = c.id
+
+		if msg, ok := packet.Msg.(*packets.Packet_Chat); ok {
+			c.hub.LastMessages.Add(server.StoragedMessage{
+				Timestamp: time.Now(),
+				Msg: msg,
+				SenderId: packet.SenderId,
+			})
 		}
 
 		c.ProcessMessage(packet.SenderId, packet.Msg)
