@@ -124,6 +124,8 @@ func (c *WebSocketClient) ReadPump() {
 		return
 	}
 
+	c.conn.SetReadLimit(512)
+
 	c.conn.SetPongHandler(c.pongHandler)
 
 	for {
