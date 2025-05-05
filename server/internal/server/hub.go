@@ -4,6 +4,7 @@ import (
 	"log"
 	"net/http"
 
+	"server/internal/server/objects"
 	"server/pkg/packets"
 )
 
@@ -38,7 +39,7 @@ type ClientInterfacer interface {
 
 // The hub is the central point of communication between all connected clients
 type Hub struct {
-	Clients map[uint64]ClientInterfacer
+	Clients *objects.SharedCollection[ClientInterfacer]
 
 	// Packets in this channel will be processed by all connected clients except the sender
 	BroadcastChan chan *packets.Packet
@@ -52,8 +53,8 @@ type Hub struct {
 
 func NewHub() *Hub {
 	return &Hub{
-		Clients: 				make(map[uint64]ClientInterfacer),
-		BroadcastChan: 	make(chan *packets.Packet),
+		Clients: 				objects.NewSharedCollection[ClientInterfacer](),
+		BroadcastChan: 	make(chan *packets.Packet, 256),
 		RegisterChan: 	make(chan ClientInterfacer),
 		UnregisterChan: make(chan ClientInterfacer),
 	}
@@ -64,15 +65,21 @@ func (h *Hub) Run() {
 	for {
 		select {
 		case client := <-h.RegisterChan:
-			client.Initialize(uint64(len(h.Clients))) //! Check about concurrency and lock
+			client.Initialize(h.Clients.Add(client))
+			h.Clients.ForEach(func(cId uint64, c ClientInterfacer) {
+				if cId != client.Id() {
+					c.PassToPeer(packets.NewRegister(cId), cId)
+				}
+			})
 		case client := <- h.UnregisterChan:
-			delete(h.Clients, client.Id())
+			client.Broadcast(packets.NewUnregister(client.Id()))
+			h.Clients.Remove(client.Id())
 		case packet := <-h.BroadcastChan:
-			for id, client := range h.Clients {
-				if id != packet.SenderId {
+			h.Clients.ForEach(func(clientId uint64, client ClientInterfacer) {
+				if clientId != packet.SenderId {
 					client.ProcessMessage(packet.SenderId, packet.Msg)
 				}
-			}
+			})
 		}
 	}
 }

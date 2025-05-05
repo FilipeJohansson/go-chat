@@ -1,30 +1,12 @@
-import { useEffect, useState } from "react"
 import { Chat } from "./components/Chat"
-import { User, useWebSocket } from "./internal/useWebSocket"
+import { useWebSocket } from "./internal/useWebSocket"
 
 export function App() {
-  const { isConnected, connectedUser, messages, sendMessage } = useWebSocket()
-
-  const [usersOnline, setUsersOnline] = useState<User[]>([])
-
-  useEffect(() => {
-    if (connectedUser) onUserJoin(connectedUser)
-  }, [connectedUser])
+  const { isConnected, connectedUser, messages, usersOnline, sendMessage } = useWebSocket()
 
   const handleSend = (message: string) => {
     if (!isConnected) return
     sendMessage(message)
-  }
-
-  const onUserJoin = (user: User) => {
-    setUsersOnline((prevList) => [
-      ...prevList,
-      user
-    ])
-  }
-
-  const onUserLeave = (userId: number) => {
-    setUsersOnline((prevList) => prevList.filter((u: User) => u.id != userId))
   }
 
   return (

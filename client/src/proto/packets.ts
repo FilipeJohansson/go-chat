@@ -20,11 +20,21 @@ export interface IdMessage {
 export interface PingMessage {
 }
 
+export interface RegisterMessage {
+  id: number;
+}
+
+export interface UnregisterMessage {
+  id: number;
+}
+
 export interface Packet {
   senderId: number;
   chat?: ChatMessage | undefined;
   id?: IdMessage | undefined;
   ping?: PingMessage | undefined;
+  register?: RegisterMessage | undefined;
+  unregister?: UnregisterMessage | undefined;
 }
 
 function createBaseChatMessage(): ChatMessage {
@@ -186,8 +196,124 @@ export const PingMessage: MessageFns<PingMessage> = {
   },
 };
 
+function createBaseRegisterMessage(): RegisterMessage {
+  return { id: 0 };
+}
+
+export const RegisterMessage: MessageFns<RegisterMessage> = {
+  encode(message: RegisterMessage, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.id !== 0) {
+      writer.uint32(8).uint64(message.id);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): RegisterMessage {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseRegisterMessage();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 8) {
+            break;
+          }
+
+          message.id = longToNumber(reader.uint64());
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): RegisterMessage {
+    return { id: isSet(object.id) ? globalThis.Number(object.id) : 0 };
+  },
+
+  toJSON(message: RegisterMessage): unknown {
+    const obj: any = {};
+    if (message.id !== 0) {
+      obj.id = Math.round(message.id);
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<RegisterMessage>, I>>(base?: I): RegisterMessage {
+    return RegisterMessage.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<RegisterMessage>, I>>(object: I): RegisterMessage {
+    const message = createBaseRegisterMessage();
+    message.id = object.id ?? 0;
+    return message;
+  },
+};
+
+function createBaseUnregisterMessage(): UnregisterMessage {
+  return { id: 0 };
+}
+
+export const UnregisterMessage: MessageFns<UnregisterMessage> = {
+  encode(message: UnregisterMessage, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.id !== 0) {
+      writer.uint32(8).uint64(message.id);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): UnregisterMessage {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseUnregisterMessage();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 8) {
+            break;
+          }
+
+          message.id = longToNumber(reader.uint64());
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): UnregisterMessage {
+    return { id: isSet(object.id) ? globalThis.Number(object.id) : 0 };
+  },
+
+  toJSON(message: UnregisterMessage): unknown {
+    const obj: any = {};
+    if (message.id !== 0) {
+      obj.id = Math.round(message.id);
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<UnregisterMessage>, I>>(base?: I): UnregisterMessage {
+    return UnregisterMessage.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<UnregisterMessage>, I>>(object: I): UnregisterMessage {
+    const message = createBaseUnregisterMessage();
+    message.id = object.id ?? 0;
+    return message;
+  },
+};
+
 function createBasePacket(): Packet {
-  return { senderId: 0, chat: undefined, id: undefined, ping: undefined };
+  return { senderId: 0, chat: undefined, id: undefined, ping: undefined, register: undefined, unregister: undefined };
 }
 
 export const Packet: MessageFns<Packet> = {
@@ -203,6 +329,12 @@ export const Packet: MessageFns<Packet> = {
     }
     if (message.ping !== undefined) {
       PingMessage.encode(message.ping, writer.uint32(34).fork()).join();
+    }
+    if (message.register !== undefined) {
+      RegisterMessage.encode(message.register, writer.uint32(42).fork()).join();
+    }
+    if (message.unregister !== undefined) {
+      UnregisterMessage.encode(message.unregister, writer.uint32(50).fork()).join();
     }
     return writer;
   },
@@ -246,6 +378,22 @@ export const Packet: MessageFns<Packet> = {
           message.ping = PingMessage.decode(reader, reader.uint32());
           continue;
         }
+        case 5: {
+          if (tag !== 42) {
+            break;
+          }
+
+          message.register = RegisterMessage.decode(reader, reader.uint32());
+          continue;
+        }
+        case 6: {
+          if (tag !== 50) {
+            break;
+          }
+
+          message.unregister = UnregisterMessage.decode(reader, reader.uint32());
+          continue;
+        }
       }
       if ((tag & 7) === 4 || tag === 0) {
         break;
@@ -261,6 +409,8 @@ export const Packet: MessageFns<Packet> = {
       chat: isSet(object.chat) ? ChatMessage.fromJSON(object.chat) : undefined,
       id: isSet(object.id) ? IdMessage.fromJSON(object.id) : undefined,
       ping: isSet(object.ping) ? PingMessage.fromJSON(object.ping) : undefined,
+      register: isSet(object.register) ? RegisterMessage.fromJSON(object.register) : undefined,
+      unregister: isSet(object.unregister) ? UnregisterMessage.fromJSON(object.unregister) : undefined,
     };
   },
 
@@ -278,6 +428,12 @@ export const Packet: MessageFns<Packet> = {
     if (message.ping !== undefined) {
       obj.ping = PingMessage.toJSON(message.ping);
     }
+    if (message.register !== undefined) {
+      obj.register = RegisterMessage.toJSON(message.register);
+    }
+    if (message.unregister !== undefined) {
+      obj.unregister = UnregisterMessage.toJSON(message.unregister);
+    }
     return obj;
   },
 
@@ -293,6 +449,12 @@ export const Packet: MessageFns<Packet> = {
     message.id = (object.id !== undefined && object.id !== null) ? IdMessage.fromPartial(object.id) : undefined;
     message.ping = (object.ping !== undefined && object.ping !== null)
       ? PingMessage.fromPartial(object.ping)
+      : undefined;
+    message.register = (object.register !== undefined && object.register !== null)
+      ? RegisterMessage.fromPartial(object.register)
+      : undefined;
+    message.unregister = (object.unregister !== undefined && object.unregister !== null)
+      ? UnregisterMessage.fromPartial(object.unregister)
       : undefined;
     return message;
   },

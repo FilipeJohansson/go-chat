@@ -24,14 +24,14 @@ export function Chat({ connectedUserId, messages, usersOnline, onSendMessage }: 
     <div className="flex flex-col gap-3 p-2 w-[700px] h-[500px] bg-[url(/src/assets/background.png)] bg-no-repeat bg-cover bg-center rounded-md">
       <div className="grid grid-cols-4 gap-3 h-[80%]">
         {/* Messages */}
-        <Painel className="col-span-3 flex flex-col">
+        <Painel className="col-span-3 flex flex-col overflow-y-auto overflow-x-hidden">
           {messages.map((m: Message) => (
             <UserMessage key={`${m.user.id}_${m.timestamp}`} message={m} isConnectedUser={connectedUserId === m.user.id} />
           ))}
         </Painel>
 
         {/* People Online */}
-        <Painel className="flex flex-col gap-0.5">
+        <Painel className="flex flex-col gap-0.5 overflow-y-auto overflow-x-hidden">
           {usersOnline.map((u: User) => (
             <OnlineUser key={u.id} name={u.name} isConnectedUser={connectedUserId === u.id} />
           ))}

@@ -16,7 +16,7 @@ type WebSocketClient struct {
 	id 				uint64
 	conn 			*websocket.Conn
 	hub 			*server.Hub
-	sendChan 	chan *packets.Packet
+	sendChan 	chan *packets.Packet // To send messages from server to client. WritePump consumes it
 	logger 		*log.Logger
 }
 
@@ -47,13 +47,23 @@ func (c *WebSocketClient) Id() uint64 {
 }
 
 func (c *WebSocketClient) ProcessMessage(senderId uint64, message packets.Msg) {
-	c.logger.Printf("Received message: %T from client - echoing back...", message)
-	c.SocketSend(message)
+	if senderId == c.id {
+		// This message was sent by our own client, so broadcast it to everyone else
+		c.Broadcast(message)
+	} else {
+		c.SocketSendAs(message, senderId)
+	}
 }
 
 func (c *WebSocketClient) Initialize(id uint64) {
 	c.id = id
 	c.logger.SetPrefix(fmt.Sprintf("Client %d: ", c.id))
+
+	c.SocketSend(packets.NewId(c.id))
+	c.logger.Printf("Send ID to client")
+
+	c.Broadcast(packets.NewRegister(c.id))
+	c.logger.Printf("Broadcasting new client connected")
 }
 
 func (c *WebSocketClient) SocketSend(message packets.Msg) {
@@ -69,15 +79,21 @@ func (c *WebSocketClient) SocketSendAs(message packets.Msg, senderId uint64) {
 }
 
 func (c *WebSocketClient) PassToPeer(message packets.Msg, peerId uint64) {
-	if peer, exists := c.hub.Clients[peerId]; exists {
+	if peer, exists := c.hub.Clients.Get(peerId); exists {
 		peer.ProcessMessage(c.id, message)
 	}
 }
 
 func (c *WebSocketClient) Broadcast(message packets.Msg) {
-	c.hub.BroadcastChan <- &packets.Packet{SenderId: c.id, Msg: message}
+	select {
+	case c.hub.BroadcastChan <- &packets.Packet{SenderId: c.id, Msg: message}:
+	default:
+		c.logger.Printf("Broadcast channel full, dropping message: %t", message)
+	}
+	
 }
 
+// Listen messages from client
 func (c *WebSocketClient) ReadPump() {
 	defer func() {
 		c.logger.Println("Closing read pump")
@@ -108,6 +124,7 @@ func (c *WebSocketClient) ReadPump() {
 	}
 }
 
+// Send messages to the client
 func (c *WebSocketClient) WritePump() {
 	defer func() {
 		c.logger.Println("Closing write pump")

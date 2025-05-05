@@ -13,7 +13,23 @@ func NewChat(msg string) Msg {
 func NewId(id uint64) Msg {
 	return &Packet_Id{
 		Id: &IdMessage{
-			Id: 779,
+			Id: id,
+		},
+	}
+}
+
+func NewRegister(id uint64) Msg {
+	return &Packet_Register{
+		Register: &RegisterMessage{
+			Id: id,
+		},
+	}
+}
+
+func NewUnregister(id uint64) Msg {
+	return &Packet_Unregister{
+		Unregister: &UnregisterMessage{
+			Id: id,
 		},
 	}
 }
