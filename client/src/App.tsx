@@ -10,7 +10,7 @@ export function App() {
   }
 
   return (
-    <div className="p-5">
+    <div className="flex justify-center w-full p-5">
       <Chat
         connectedUserId={connectedUser?.id ?? -1}
         messages={messages}
