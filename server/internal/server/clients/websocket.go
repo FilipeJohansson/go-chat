@@ -13,19 +13,24 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+var (
+	pongWait     = 10 * time.Second
+	pingInterval = (pongWait * 9) / 10
+)
+
 type WebSocketClient struct {
-	id 				uint64
-	conn 			*websocket.Conn
-	hub 			*server.Hub
-	sendChan 	chan *packets.Packet // To send messages from server to client. WritePump consumes it
-	logger 		*log.Logger
+	id       uint64
+	conn     *websocket.Conn
+	hub      *server.Hub
+	sendChan chan *packets.Packet // To send messages from server to client. WritePump consumes it
+	logger   *log.Logger
 }
 
 func NewWebSocketClient(hub *server.Hub, writer http.ResponseWriter, request *http.Request) (server.ClientInterfacer, error) {
 	upgrader := websocket.Upgrader{
-		ReadBufferSize: 1024,
+		ReadBufferSize:  1024,
 		WriteBufferSize: 1024,
-		CheckOrigin: func(_ *http.Request) bool { return true },
+		CheckOrigin:     func(_ *http.Request) bool { return true },
 	}
 
 	conn, err := upgrader.Upgrade(writer, request, nil)
@@ -34,10 +39,10 @@ func NewWebSocketClient(hub *server.Hub, writer http.ResponseWriter, request *ht
 	}
 
 	c := &WebSocketClient{
-		hub:			hub,
-		conn:			conn,
+		hub:      hub,
+		conn:     conn,
 		sendChan: make(chan *packets.Packet, 256),
-		logger:		log.New(log.Writer(), "Client unknown: ", log.LstdFlags),
+		logger:   log.New(log.Writer(), "Client unknown: ", log.LstdFlags),
 	}
 
 	return c, nil
@@ -104,7 +109,7 @@ func (c *WebSocketClient) Broadcast(message packets.Msg) {
 	default:
 		c.logger.Printf("Broadcast channel full, dropping message: %t", message)
 	}
-	
+
 }
 
 // Listen messages from client
@@ -113,6 +118,13 @@ func (c *WebSocketClient) ReadPump() {
 		c.logger.Println("Closing read pump")
 		c.Close("read pump closed")
 	}()
+
+	if err := c.conn.SetReadDeadline(time.Now().Add(pongWait)); err != nil {
+		c.logger.Printf("error setting deadline: %v", err)
+		return
+	}
+
+	c.conn.SetPongHandler(c.pongHandler)
 
 	for {
 		_, data, err := c.conn.ReadMessage()
@@ -135,8 +147,8 @@ func (c *WebSocketClient) ReadPump() {
 		if msg, ok := packet.Msg.(*packets.Packet_Chat); ok {
 			c.hub.LastMessages.Add(server.StoragedMessage{
 				Timestamp: time.Now(),
-				Msg: msg,
-				SenderId: packet.SenderId,
+				Msg:       msg,
+				SenderId:  packet.SenderId,
 			})
 		}
 
@@ -151,28 +163,45 @@ func (c *WebSocketClient) WritePump() {
 		c.Close("write pump closed")
 	}()
 
-	for packet := range c.sendChan {
-		writer, err := c.conn.NextWriter(websocket.BinaryMessage)
-		if err != nil {
-			c.logger.Printf("error getting writer for %T packet, closing client: %v", packet.Msg, err)
-			return
-		}
+	ticker := time.NewTicker(pingInterval)
 
-		data, err := proto.Marshal(packet)
-		if err != nil {
-			c.logger.Printf("error marshalling %T packet, closing client: %v", packet.Msg, err)
-			continue
-		}
+	for {
+		select {
+		case packet, ok := <-c.sendChan:
+			if !ok {
+				if err := c.conn.WriteMessage(websocket.CloseMessage, nil); err != nil {
+					c.logger.Printf("connection closed: %v", err)
+				}
+				return
+			}
+			writer, err := c.conn.NextWriter(websocket.BinaryMessage)
+			if err != nil {
+				c.logger.Printf("error getting writer for %T packet, closing client: %v", packet.Msg, err)
+				return
+			}
 
-		_, err = writer.Write(data)
-		if err != nil {
-			c.logger.Printf("error writing %T packet: %v", packet.Msg, err)
-			continue
-		}
-	
-		if err = writer.Close(); err != nil {
-			c.logger.Printf("error closing writer for %T packet: %v", packet.Msg, err)
-			continue
+			data, err := proto.Marshal(packet)
+			if err != nil {
+				c.logger.Printf("error marshalling %T packet, closing client: %v", packet.Msg, err)
+				continue
+			}
+
+			_, err = writer.Write(data)
+			if err != nil {
+				c.logger.Printf("error writing %T packet: %v", packet.Msg, err)
+				continue
+			}
+
+			if err = writer.Close(); err != nil {
+				c.logger.Printf("error closing writer for %T packet: %v", packet.Msg, err)
+				continue
+			}
+		case <-ticker.C:
+			c.logger.Println("ping")
+			if err := c.conn.WriteMessage(websocket.PingMessage, []byte(``)); err != nil {
+				log.Printf("error sending ping %v", err)
+				return
+			}
 		}
 	}
 }
@@ -188,4 +217,9 @@ func (c *WebSocketClient) Close(reason string) {
 	default:
 		close(c.sendChan)
 	}
+}
+
+func (c *WebSocketClient) pongHandler(pongMsg string) error {
+	c.logger.Println("pong")
+	return c.conn.SetReadDeadline(time.Now().Add(pongWait))
 }

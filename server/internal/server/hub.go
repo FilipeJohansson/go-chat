@@ -41,34 +41,34 @@ type ClientInterfacer interface {
 }
 
 type StoragedMessage struct {
-	Timestamp	time.Time
-	Msg				*packets.Packet_Chat
-	SenderId	uint64
+	Timestamp time.Time
+	Msg       *packets.Packet_Chat
+	SenderId  uint64
 }
 
 // The hub is the central point of communication between all connected clients
 type Hub struct {
-	Clients					*objects.SharedCollection[ClientInterfacer]
+	Clients *objects.SharedCollection[ClientInterfacer]
 
 	// Last messages sent from clients, so it can be sent to new clients
-	LastMessages		*objects.SharedCollection[StoragedMessage]
+	LastMessages *objects.SharedCollection[StoragedMessage]
 
 	// Packets in this channel will be processed by all connected clients except the sender
-	BroadcastChan		chan *packets.Packet
+	BroadcastChan chan *packets.Packet
 
 	// Clients in this channel will be registered to the hub
-	RegisterChan		chan ClientInterfacer
+	RegisterChan chan ClientInterfacer
 
 	// Clients in this channel will be unregistered from the hub
-	UnregisterChan	chan ClientInterfacer
+	UnregisterChan chan ClientInterfacer
 }
 
 func NewHub() *Hub {
 	return &Hub{
-		Clients: 				objects.NewSharedCollection[ClientInterfacer](),
-		LastMessages:		objects.NewSharedCollection[StoragedMessage](),
-		BroadcastChan: 	make(chan *packets.Packet, 256),
-		RegisterChan: 	make(chan ClientInterfacer),
+		Clients:        objects.NewSharedCollection[ClientInterfacer](),
+		LastMessages:   objects.NewSharedCollection[StoragedMessage](),
+		BroadcastChan:  make(chan *packets.Packet, 256),
+		RegisterChan:   make(chan ClientInterfacer),
 		UnregisterChan: make(chan ClientInterfacer),
 	}
 }
@@ -80,7 +80,7 @@ func (h *Hub) Run() {
 		case client := <-h.RegisterChan:
 			h.RemoveOldMessages(h.LastMessages)
 			client.Initialize(h.Clients.Add(client))
-		case client := <- h.UnregisterChan:
+		case client := <-h.UnregisterChan:
 			client.Broadcast(packets.NewUnregister(client.Id()))
 			h.Clients.Remove(client.Id())
 		case packet := <-h.BroadcastChan:
@@ -97,7 +97,7 @@ func (h *Hub) Serve(
 	getNewClient func(*Hub, http.ResponseWriter, *http.Request) (ClientInterfacer, error),
 	writter http.ResponseWriter,
 	request *http.Request,
-)  {
+) {
 	log.Println("New client connected from", request.RemoteAddr)
 	client, err := getNewClient(h, writter, request)
 	if err != nil {
