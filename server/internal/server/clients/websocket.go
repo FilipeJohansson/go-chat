@@ -30,7 +30,7 @@ func NewWebSocketClient(hub *server.Hub, writer http.ResponseWriter, request *ht
 	upgrader := websocket.Upgrader{
 		ReadBufferSize:  1024,
 		WriteBufferSize: 1024,
-		CheckOrigin:     func(_ *http.Request) bool { return true },
+		CheckOrigin:     checkOrigin,
 	}
 
 	conn, err := upgrader.Upgrade(writer, request, nil)
@@ -224,4 +224,15 @@ func (c *WebSocketClient) Close(reason string) {
 func (c *WebSocketClient) pongHandler(pongMsg string) error {
 	c.logger.Println("pong")
 	return c.conn.SetReadDeadline(time.Now().Add(pongWait))
+}
+
+func checkOrigin(r *http.Request) bool {
+	origin := r.Header.Get("Origin")
+
+	switch origin {
+	case "http://localhost:5173":
+		return true
+	default:
+		return false
+	}
 }
