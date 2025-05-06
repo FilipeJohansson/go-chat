@@ -5,17 +5,23 @@ option go_package = "pkg/packets";
 
 message ChatMessage { string msg = 1; }
 message IdMessage { uint64 id = 1; }
-message PingMessage {}
 message RegisterMessage { uint64 id = 1; }
 message UnregisterMessage { uint64 id = 1; }
+message LoginRequestMessage { string username = 1; string password = 2; }
+message RegisterRequestMessage { string username = 1; string password = 2; }
+message OkResponseMessage { }
+message DenyResponseMessage { string reason = 1; }
 
 message Packet {
   uint64 sender_id = 1;
   oneof msg {
     ChatMessage chat = 2;
     IdMessage id = 3;
-    PingMessage ping = 4;
-    RegisterMessage register = 5;
-    UnregisterMessage unregister = 6;
+    RegisterMessage register = 4;
+    UnregisterMessage unregister = 5;
+    LoginRequestMessage login_request = 6;
+    RegisterRequestMessage register_request = 7;
+    OkResponseMessage ok_response = 8;
+    DenyResponseMessage deny_response = 9;
   }
 }

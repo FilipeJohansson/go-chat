@@ -1,15 +1,50 @@
 package server
 
 import (
+	"context"
+	"database/sql"
+	_ "embed"
 	"log"
 	"net/http"
 	"sort"
 
 	"time"
 
+	"server/internal/server/db"
 	"server/internal/server/objects"
 	"server/pkg/packets"
+
+	_ "modernc.org/sqlite"
 )
+
+//go:embed db/config/schema.sql
+var schemaGenSql string
+
+type DbTx struct {
+	Ctx     context.Context
+	Queries *db.Queries
+}
+
+func (h *Hub) NewDbTx() *DbTx {
+	return &DbTx{
+		Ctx:     context.Background(),
+		Queries: db.New(h.dbPool),
+	}
+}
+
+// A structure for a state machine to process the client's messages
+type ClientStateHandler interface {
+	Name() string
+
+	// Inject the client into the state handler
+	SetClient(client ClientInterfacer)
+
+	OnEnter()
+	HandleMessage(senderId uint64, message packets.Msg)
+
+	// Cleanup the state handle and perform any alst actions
+	OnExit()
+}
 
 type ClientInterfacer interface {
 	Id() uint64
@@ -17,6 +52,8 @@ type ClientInterfacer interface {
 
 	// Sets the client's ID and anything else that needs to be initialized
 	Initialize(id uint64)
+
+	SetState(state ClientStateHandler)
 
 	// Puts data from this client into the write pump
 	SocketSend(message packets.Msg)
@@ -35,6 +72,9 @@ type ClientInterfacer interface {
 
 	// Pump data from the client directly to the connected socket
 	WritePump()
+
+	// A reference to the database transaction context for this client
+	DbTx() *DbTx
 
 	// Close the client's connections and cleanup
 	Close(reason string)
@@ -61,19 +101,32 @@ type Hub struct {
 
 	// Clients in this channel will be unregistered from the hub
 	UnregisterChan chan ClientInterfacer
+
+	dbPool *sql.DB
 }
 
 func NewHub() *Hub {
+	dbPool, err := sql.Open("sqlite", "db.sqlite")
+	if err != nil {
+		log.Fatalf("Error opening database: %v", err)
+	}
+
 	return &Hub{
 		Clients:        objects.NewSharedCollection[ClientInterfacer](),
 		LastMessages:   objects.NewSharedCollection[StoragedMessage](),
 		BroadcastChan:  make(chan *packets.Packet, 256),
 		RegisterChan:   make(chan ClientInterfacer),
 		UnregisterChan: make(chan ClientInterfacer),
+		dbPool:         dbPool,
 	}
 }
 
 func (h *Hub) Run() {
+	log.Println("Initializing database")
+	if _, err := h.dbPool.ExecContext(context.Background(), schemaGenSql); err != nil {
+		log.Fatalf("Error initializing database: %v", err)
+	}
+
 	log.Println("Awaiting client registrations")
 	for {
 		select {

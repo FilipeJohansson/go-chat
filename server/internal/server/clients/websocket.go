@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"server/internal/server"
+	"server/internal/server/states"
 	"server/pkg/packets"
 
 	"github.com/gorilla/websocket"
@@ -23,7 +24,9 @@ type WebSocketClient struct {
 	conn     *websocket.Conn
 	hub      *server.Hub
 	sendChan chan *packets.Packet // To send messages from server to client. WritePump consumes it
+	state    server.ClientStateHandler
 	logger   *log.Logger
+	dbTx     *server.DbTx
 }
 
 func NewWebSocketClient(hub *server.Hub, writer http.ResponseWriter, request *http.Request) (server.ClientInterfacer, error) {
@@ -43,6 +46,7 @@ func NewWebSocketClient(hub *server.Hub, writer http.ResponseWriter, request *ht
 		conn:     conn,
 		sendChan: make(chan *packets.Packet, 256),
 		logger:   log.New(log.Writer(), "Client unknown: ", log.LstdFlags),
+		dbTx:     hub.NewDbTx(),
 	}
 
 	return c, nil
@@ -52,21 +56,37 @@ func (c *WebSocketClient) Id() uint64 {
 	return c.id
 }
 
-func (c *WebSocketClient) ProcessMessage(senderId uint64, message packets.Msg) {
-	if senderId == c.id {
-		// This message was sent by our own client, so broadcast it to everyone else
-		c.Broadcast(message)
-	} else {
-		c.SocketSendAs(message, senderId)
+func (c *WebSocketClient) SetState(state server.ClientStateHandler) {
+	prevStateName := "None"
+	if c.state != nil {
+		prevStateName = c.state.Name()
+		c.state.OnExit()
 	}
+
+	newStateName := "None"
+	if state != nil {
+		newStateName = state.Name()
+	}
+
+	c.logger.Printf("Switching from state %s to %s", prevStateName, newStateName)
+
+	c.state = state
+
+	if c.state != nil {
+		c.state.SetClient(c)
+		c.state.OnEnter()
+	}
+}
+
+func (c *WebSocketClient) ProcessMessage(senderId uint64, message packets.Msg) {
+	c.state.HandleMessage(senderId, message)
 }
 
 func (c *WebSocketClient) Initialize(id uint64) {
 	c.id = id
 	c.logger.SetPrefix(fmt.Sprintf("Client %d: ", c.id))
 
-	c.logger.Printf("Sending ID to client")
-	c.SocketSend(packets.NewId(c.id))
+	c.SetState(&states.Connected{})
 
 	c.logger.Printf("Broadcasting new client connected")
 	c.Broadcast(packets.NewRegister(c.id))
@@ -208,8 +228,14 @@ func (c *WebSocketClient) WritePump() {
 	}
 }
 
+func (c *WebSocketClient) DbTx() *server.DbTx {
+	return c.dbTx
+}
+
 func (c *WebSocketClient) Close(reason string) {
 	c.logger.Printf("Closing client connection because: %s", reason)
+
+	c.SetState(nil)
 
 	c.hub.UnregisterChan <- c
 	c.conn.Close()

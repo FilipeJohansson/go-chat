@@ -17,9 +17,6 @@ export interface IdMessage {
   id: number;
 }
 
-export interface PingMessage {
-}
-
 export interface RegisterMessage {
   id: number;
 }
@@ -28,13 +25,33 @@ export interface UnregisterMessage {
   id: number;
 }
 
+export interface LoginRequestMessage {
+  username: string;
+  password: string;
+}
+
+export interface RegisterRequestMessage {
+  username: string;
+  password: string;
+}
+
+export interface OkResponseMessage {
+}
+
+export interface DenyResponseMessage {
+  reason: string;
+}
+
 export interface Packet {
   senderId: number;
   chat?: ChatMessage | undefined;
   id?: IdMessage | undefined;
-  ping?: PingMessage | undefined;
   register?: RegisterMessage | undefined;
   unregister?: UnregisterMessage | undefined;
+  loginRequest?: LoginRequestMessage | undefined;
+  registerRequest?: RegisterRequestMessage | undefined;
+  okResponse?: OkResponseMessage | undefined;
+  denyResponse?: DenyResponseMessage | undefined;
 }
 
 function createBaseChatMessage(): ChatMessage {
@@ -149,49 +166,6 @@ export const IdMessage: MessageFns<IdMessage> = {
   fromPartial<I extends Exact<DeepPartial<IdMessage>, I>>(object: I): IdMessage {
     const message = createBaseIdMessage();
     message.id = object.id ?? 0;
-    return message;
-  },
-};
-
-function createBasePingMessage(): PingMessage {
-  return {};
-}
-
-export const PingMessage: MessageFns<PingMessage> = {
-  encode(_: PingMessage, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
-    return writer;
-  },
-
-  decode(input: BinaryReader | Uint8Array, length?: number): PingMessage {
-    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
-    let end = length === undefined ? reader.len : reader.pos + length;
-    const message = createBasePingMessage();
-    while (reader.pos < end) {
-      const tag = reader.uint32();
-      switch (tag >>> 3) {
-      }
-      if ((tag & 7) === 4 || tag === 0) {
-        break;
-      }
-      reader.skip(tag & 7);
-    }
-    return message;
-  },
-
-  fromJSON(_: any): PingMessage {
-    return {};
-  },
-
-  toJSON(_: PingMessage): unknown {
-    const obj: any = {};
-    return obj;
-  },
-
-  create<I extends Exact<DeepPartial<PingMessage>, I>>(base?: I): PingMessage {
-    return PingMessage.fromPartial(base ?? ({} as any));
-  },
-  fromPartial<I extends Exact<DeepPartial<PingMessage>, I>>(_: I): PingMessage {
-    const message = createBasePingMessage();
     return message;
   },
 };
@@ -312,8 +286,271 @@ export const UnregisterMessage: MessageFns<UnregisterMessage> = {
   },
 };
 
+function createBaseLoginRequestMessage(): LoginRequestMessage {
+  return { username: "", password: "" };
+}
+
+export const LoginRequestMessage: MessageFns<LoginRequestMessage> = {
+  encode(message: LoginRequestMessage, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.username !== "") {
+      writer.uint32(10).string(message.username);
+    }
+    if (message.password !== "") {
+      writer.uint32(18).string(message.password);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): LoginRequestMessage {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseLoginRequestMessage();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.username = reader.string();
+          continue;
+        }
+        case 2: {
+          if (tag !== 18) {
+            break;
+          }
+
+          message.password = reader.string();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): LoginRequestMessage {
+    return {
+      username: isSet(object.username) ? globalThis.String(object.username) : "",
+      password: isSet(object.password) ? globalThis.String(object.password) : "",
+    };
+  },
+
+  toJSON(message: LoginRequestMessage): unknown {
+    const obj: any = {};
+    if (message.username !== "") {
+      obj.username = message.username;
+    }
+    if (message.password !== "") {
+      obj.password = message.password;
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<LoginRequestMessage>, I>>(base?: I): LoginRequestMessage {
+    return LoginRequestMessage.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<LoginRequestMessage>, I>>(object: I): LoginRequestMessage {
+    const message = createBaseLoginRequestMessage();
+    message.username = object.username ?? "";
+    message.password = object.password ?? "";
+    return message;
+  },
+};
+
+function createBaseRegisterRequestMessage(): RegisterRequestMessage {
+  return { username: "", password: "" };
+}
+
+export const RegisterRequestMessage: MessageFns<RegisterRequestMessage> = {
+  encode(message: RegisterRequestMessage, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.username !== "") {
+      writer.uint32(10).string(message.username);
+    }
+    if (message.password !== "") {
+      writer.uint32(18).string(message.password);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): RegisterRequestMessage {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseRegisterRequestMessage();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.username = reader.string();
+          continue;
+        }
+        case 2: {
+          if (tag !== 18) {
+            break;
+          }
+
+          message.password = reader.string();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): RegisterRequestMessage {
+    return {
+      username: isSet(object.username) ? globalThis.String(object.username) : "",
+      password: isSet(object.password) ? globalThis.String(object.password) : "",
+    };
+  },
+
+  toJSON(message: RegisterRequestMessage): unknown {
+    const obj: any = {};
+    if (message.username !== "") {
+      obj.username = message.username;
+    }
+    if (message.password !== "") {
+      obj.password = message.password;
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<RegisterRequestMessage>, I>>(base?: I): RegisterRequestMessage {
+    return RegisterRequestMessage.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<RegisterRequestMessage>, I>>(object: I): RegisterRequestMessage {
+    const message = createBaseRegisterRequestMessage();
+    message.username = object.username ?? "";
+    message.password = object.password ?? "";
+    return message;
+  },
+};
+
+function createBaseOkResponseMessage(): OkResponseMessage {
+  return {};
+}
+
+export const OkResponseMessage: MessageFns<OkResponseMessage> = {
+  encode(_: OkResponseMessage, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): OkResponseMessage {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseOkResponseMessage();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(_: any): OkResponseMessage {
+    return {};
+  },
+
+  toJSON(_: OkResponseMessage): unknown {
+    const obj: any = {};
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<OkResponseMessage>, I>>(base?: I): OkResponseMessage {
+    return OkResponseMessage.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<OkResponseMessage>, I>>(_: I): OkResponseMessage {
+    const message = createBaseOkResponseMessage();
+    return message;
+  },
+};
+
+function createBaseDenyResponseMessage(): DenyResponseMessage {
+  return { reason: "" };
+}
+
+export const DenyResponseMessage: MessageFns<DenyResponseMessage> = {
+  encode(message: DenyResponseMessage, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.reason !== "") {
+      writer.uint32(10).string(message.reason);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): DenyResponseMessage {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseDenyResponseMessage();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.reason = reader.string();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): DenyResponseMessage {
+    return { reason: isSet(object.reason) ? globalThis.String(object.reason) : "" };
+  },
+
+  toJSON(message: DenyResponseMessage): unknown {
+    const obj: any = {};
+    if (message.reason !== "") {
+      obj.reason = message.reason;
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<DenyResponseMessage>, I>>(base?: I): DenyResponseMessage {
+    return DenyResponseMessage.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<DenyResponseMessage>, I>>(object: I): DenyResponseMessage {
+    const message = createBaseDenyResponseMessage();
+    message.reason = object.reason ?? "";
+    return message;
+  },
+};
+
 function createBasePacket(): Packet {
-  return { senderId: 0, chat: undefined, id: undefined, ping: undefined, register: undefined, unregister: undefined };
+  return {
+    senderId: 0,
+    chat: undefined,
+    id: undefined,
+    register: undefined,
+    unregister: undefined,
+    loginRequest: undefined,
+    registerRequest: undefined,
+    okResponse: undefined,
+    denyResponse: undefined,
+  };
 }
 
 export const Packet: MessageFns<Packet> = {
@@ -327,14 +564,23 @@ export const Packet: MessageFns<Packet> = {
     if (message.id !== undefined) {
       IdMessage.encode(message.id, writer.uint32(26).fork()).join();
     }
-    if (message.ping !== undefined) {
-      PingMessage.encode(message.ping, writer.uint32(34).fork()).join();
-    }
     if (message.register !== undefined) {
-      RegisterMessage.encode(message.register, writer.uint32(42).fork()).join();
+      RegisterMessage.encode(message.register, writer.uint32(34).fork()).join();
     }
     if (message.unregister !== undefined) {
-      UnregisterMessage.encode(message.unregister, writer.uint32(50).fork()).join();
+      UnregisterMessage.encode(message.unregister, writer.uint32(42).fork()).join();
+    }
+    if (message.loginRequest !== undefined) {
+      LoginRequestMessage.encode(message.loginRequest, writer.uint32(50).fork()).join();
+    }
+    if (message.registerRequest !== undefined) {
+      RegisterRequestMessage.encode(message.registerRequest, writer.uint32(58).fork()).join();
+    }
+    if (message.okResponse !== undefined) {
+      OkResponseMessage.encode(message.okResponse, writer.uint32(66).fork()).join();
+    }
+    if (message.denyResponse !== undefined) {
+      DenyResponseMessage.encode(message.denyResponse, writer.uint32(74).fork()).join();
     }
     return writer;
   },
@@ -375,7 +621,7 @@ export const Packet: MessageFns<Packet> = {
             break;
           }
 
-          message.ping = PingMessage.decode(reader, reader.uint32());
+          message.register = RegisterMessage.decode(reader, reader.uint32());
           continue;
         }
         case 5: {
@@ -383,7 +629,7 @@ export const Packet: MessageFns<Packet> = {
             break;
           }
 
-          message.register = RegisterMessage.decode(reader, reader.uint32());
+          message.unregister = UnregisterMessage.decode(reader, reader.uint32());
           continue;
         }
         case 6: {
@@ -391,7 +637,31 @@ export const Packet: MessageFns<Packet> = {
             break;
           }
 
-          message.unregister = UnregisterMessage.decode(reader, reader.uint32());
+          message.loginRequest = LoginRequestMessage.decode(reader, reader.uint32());
+          continue;
+        }
+        case 7: {
+          if (tag !== 58) {
+            break;
+          }
+
+          message.registerRequest = RegisterRequestMessage.decode(reader, reader.uint32());
+          continue;
+        }
+        case 8: {
+          if (tag !== 66) {
+            break;
+          }
+
+          message.okResponse = OkResponseMessage.decode(reader, reader.uint32());
+          continue;
+        }
+        case 9: {
+          if (tag !== 74) {
+            break;
+          }
+
+          message.denyResponse = DenyResponseMessage.decode(reader, reader.uint32());
           continue;
         }
       }
@@ -408,9 +678,14 @@ export const Packet: MessageFns<Packet> = {
       senderId: isSet(object.senderId) ? globalThis.Number(object.senderId) : 0,
       chat: isSet(object.chat) ? ChatMessage.fromJSON(object.chat) : undefined,
       id: isSet(object.id) ? IdMessage.fromJSON(object.id) : undefined,
-      ping: isSet(object.ping) ? PingMessage.fromJSON(object.ping) : undefined,
       register: isSet(object.register) ? RegisterMessage.fromJSON(object.register) : undefined,
       unregister: isSet(object.unregister) ? UnregisterMessage.fromJSON(object.unregister) : undefined,
+      loginRequest: isSet(object.loginRequest) ? LoginRequestMessage.fromJSON(object.loginRequest) : undefined,
+      registerRequest: isSet(object.registerRequest)
+        ? RegisterRequestMessage.fromJSON(object.registerRequest)
+        : undefined,
+      okResponse: isSet(object.okResponse) ? OkResponseMessage.fromJSON(object.okResponse) : undefined,
+      denyResponse: isSet(object.denyResponse) ? DenyResponseMessage.fromJSON(object.denyResponse) : undefined,
     };
   },
 
@@ -425,14 +700,23 @@ export const Packet: MessageFns<Packet> = {
     if (message.id !== undefined) {
       obj.id = IdMessage.toJSON(message.id);
     }
-    if (message.ping !== undefined) {
-      obj.ping = PingMessage.toJSON(message.ping);
-    }
     if (message.register !== undefined) {
       obj.register = RegisterMessage.toJSON(message.register);
     }
     if (message.unregister !== undefined) {
       obj.unregister = UnregisterMessage.toJSON(message.unregister);
+    }
+    if (message.loginRequest !== undefined) {
+      obj.loginRequest = LoginRequestMessage.toJSON(message.loginRequest);
+    }
+    if (message.registerRequest !== undefined) {
+      obj.registerRequest = RegisterRequestMessage.toJSON(message.registerRequest);
+    }
+    if (message.okResponse !== undefined) {
+      obj.okResponse = OkResponseMessage.toJSON(message.okResponse);
+    }
+    if (message.denyResponse !== undefined) {
+      obj.denyResponse = DenyResponseMessage.toJSON(message.denyResponse);
     }
     return obj;
   },
@@ -447,14 +731,23 @@ export const Packet: MessageFns<Packet> = {
       ? ChatMessage.fromPartial(object.chat)
       : undefined;
     message.id = (object.id !== undefined && object.id !== null) ? IdMessage.fromPartial(object.id) : undefined;
-    message.ping = (object.ping !== undefined && object.ping !== null)
-      ? PingMessage.fromPartial(object.ping)
-      : undefined;
     message.register = (object.register !== undefined && object.register !== null)
       ? RegisterMessage.fromPartial(object.register)
       : undefined;
     message.unregister = (object.unregister !== undefined && object.unregister !== null)
       ? UnregisterMessage.fromPartial(object.unregister)
+      : undefined;
+    message.loginRequest = (object.loginRequest !== undefined && object.loginRequest !== null)
+      ? LoginRequestMessage.fromPartial(object.loginRequest)
+      : undefined;
+    message.registerRequest = (object.registerRequest !== undefined && object.registerRequest !== null)
+      ? RegisterRequestMessage.fromPartial(object.registerRequest)
+      : undefined;
+    message.okResponse = (object.okResponse !== undefined && object.okResponse !== null)
+      ? OkResponseMessage.fromPartial(object.okResponse)
+      : undefined;
+    message.denyResponse = (object.denyResponse !== undefined && object.denyResponse !== null)
+      ? DenyResponseMessage.fromPartial(object.denyResponse)
       : undefined;
     return message;
   },
