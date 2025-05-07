@@ -47,11 +47,11 @@ type ClientStateHandler interface {
 }
 
 type ClientInterfacer interface {
-	Id() uint64
-	ProcessMessage(senderId uint64, message packets.Msg)
-
 	// Sets the client's ID and anything else that needs to be initialized
 	Initialize(id uint64)
+
+	Id() uint64
+	ProcessMessage(senderId uint64, message packets.Msg)
 
 	SetState(state ClientStateHandler)
 

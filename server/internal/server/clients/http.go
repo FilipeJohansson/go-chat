@@ -60,6 +60,8 @@ func NewHttpClient(hub *server.Hub, writer http.ResponseWriter, request *http.Re
 	return c, nil
 }
 
+func (c *HttpClient) Initialize(id uint64) {}
+
 func (c *HttpClient) Id() uint64 {
 	return 0
 }
@@ -67,8 +69,6 @@ func (c *HttpClient) Id() uint64 {
 func (c *HttpClient) SetState(state server.ClientStateHandler) {}
 
 func (c *HttpClient) ProcessMessage(senderId uint64, message packets.Msg) {}
-
-func (c *HttpClient) Initialize(id uint64) {}
 
 func (c *HttpClient) SocketSend(message packets.Msg) {}
 

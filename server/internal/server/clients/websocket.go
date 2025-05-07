@@ -52,6 +52,29 @@ func NewWebSocketClient(hub *server.Hub, writer http.ResponseWriter, request *ht
 	return c, nil
 }
 
+func (c *WebSocketClient) Initialize(id uint64) {
+	c.id = id
+	c.logger.SetPrefix(fmt.Sprintf("Client %d: ", c.id))
+
+	c.SetState(&states.Connected{})
+
+	c.logger.Printf("Broadcasting new client connected")
+	c.Broadcast(packets.NewRegister(c.id))
+
+	c.logger.Printf("Fowarding already connected users to client")
+	c.hub.Clients.ForEach(func(clientId uint64, client server.ClientInterfacer) {
+		if clientId != c.Id() {
+			// Already connected client (client) is forwarding their register to the newer client (c)
+			client.PassToPeer(packets.NewRegister(clientId), c.Id())
+		}
+	})
+
+	c.logger.Printf("Sending last messages to the client")
+	for _, sm := range c.hub.OrderLastMessages(c.hub.LastMessages) {
+		c.SocketSendAs(sm.Msg, sm.SenderId)
+	}
+}
+
 func (c *WebSocketClient) Id() uint64 {
 	return c.id
 }
@@ -80,29 +103,6 @@ func (c *WebSocketClient) SetState(state server.ClientStateHandler) {
 
 func (c *WebSocketClient) ProcessMessage(senderId uint64, message packets.Msg) {
 	c.state.HandleMessage(senderId, message)
-}
-
-func (c *WebSocketClient) Initialize(id uint64) {
-	c.id = id
-	c.logger.SetPrefix(fmt.Sprintf("Client %d: ", c.id))
-
-	c.SetState(&states.Connected{})
-
-	c.logger.Printf("Broadcasting new client connected")
-	c.Broadcast(packets.NewRegister(c.id))
-
-	c.logger.Printf("Fowarding already connected users to client")
-	c.hub.Clients.ForEach(func(clientId uint64, client server.ClientInterfacer) {
-		if clientId != c.Id() {
-			// Already connected client (client) is forwarding their register to the newer client (c)
-			client.PassToPeer(packets.NewRegister(clientId), c.Id())
-		}
-	})
-
-	c.logger.Printf("Sending last messages to the client")
-	for _, sm := range c.hub.OrderLastMessages(c.hub.LastMessages) {
-		c.SocketSendAs(sm.Msg, sm.SenderId)
-	}
 }
 
 func (c *WebSocketClient) SocketSend(message packets.Msg) {
