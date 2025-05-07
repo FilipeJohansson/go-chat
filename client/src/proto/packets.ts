@@ -42,6 +42,15 @@ export interface DenyResponseMessage {
   reason: string;
 }
 
+export interface JwtMessage {
+  accessToken: string;
+  refreshToken: string;
+}
+
+export interface RefreshMessage {
+  refreshToken: string;
+}
+
 export interface Packet {
   senderId: number;
   chat?: ChatMessage | undefined;
@@ -52,6 +61,7 @@ export interface Packet {
   registerRequest?: RegisterRequestMessage | undefined;
   okResponse?: OkResponseMessage | undefined;
   denyResponse?: DenyResponseMessage | undefined;
+  jwt?: JwtMessage | undefined;
 }
 
 function createBaseChatMessage(): ChatMessage {
@@ -539,6 +549,140 @@ export const DenyResponseMessage: MessageFns<DenyResponseMessage> = {
   },
 };
 
+function createBaseJwtMessage(): JwtMessage {
+  return { accessToken: "", refreshToken: "" };
+}
+
+export const JwtMessage: MessageFns<JwtMessage> = {
+  encode(message: JwtMessage, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.accessToken !== "") {
+      writer.uint32(10).string(message.accessToken);
+    }
+    if (message.refreshToken !== "") {
+      writer.uint32(18).string(message.refreshToken);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): JwtMessage {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseJwtMessage();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.accessToken = reader.string();
+          continue;
+        }
+        case 2: {
+          if (tag !== 18) {
+            break;
+          }
+
+          message.refreshToken = reader.string();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): JwtMessage {
+    return {
+      accessToken: isSet(object.accessToken) ? globalThis.String(object.accessToken) : "",
+      refreshToken: isSet(object.refreshToken) ? globalThis.String(object.refreshToken) : "",
+    };
+  },
+
+  toJSON(message: JwtMessage): unknown {
+    const obj: any = {};
+    if (message.accessToken !== "") {
+      obj.accessToken = message.accessToken;
+    }
+    if (message.refreshToken !== "") {
+      obj.refreshToken = message.refreshToken;
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<JwtMessage>, I>>(base?: I): JwtMessage {
+    return JwtMessage.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<JwtMessage>, I>>(object: I): JwtMessage {
+    const message = createBaseJwtMessage();
+    message.accessToken = object.accessToken ?? "";
+    message.refreshToken = object.refreshToken ?? "";
+    return message;
+  },
+};
+
+function createBaseRefreshMessage(): RefreshMessage {
+  return { refreshToken: "" };
+}
+
+export const RefreshMessage: MessageFns<RefreshMessage> = {
+  encode(message: RefreshMessage, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.refreshToken !== "") {
+      writer.uint32(10).string(message.refreshToken);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): RefreshMessage {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseRefreshMessage();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.refreshToken = reader.string();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): RefreshMessage {
+    return { refreshToken: isSet(object.refreshToken) ? globalThis.String(object.refreshToken) : "" };
+  },
+
+  toJSON(message: RefreshMessage): unknown {
+    const obj: any = {};
+    if (message.refreshToken !== "") {
+      obj.refreshToken = message.refreshToken;
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<RefreshMessage>, I>>(base?: I): RefreshMessage {
+    return RefreshMessage.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<RefreshMessage>, I>>(object: I): RefreshMessage {
+    const message = createBaseRefreshMessage();
+    message.refreshToken = object.refreshToken ?? "";
+    return message;
+  },
+};
+
 function createBasePacket(): Packet {
   return {
     senderId: 0,
@@ -550,6 +694,7 @@ function createBasePacket(): Packet {
     registerRequest: undefined,
     okResponse: undefined,
     denyResponse: undefined,
+    jwt: undefined,
   };
 }
 
@@ -581,6 +726,9 @@ export const Packet: MessageFns<Packet> = {
     }
     if (message.denyResponse !== undefined) {
       DenyResponseMessage.encode(message.denyResponse, writer.uint32(74).fork()).join();
+    }
+    if (message.jwt !== undefined) {
+      JwtMessage.encode(message.jwt, writer.uint32(82).fork()).join();
     }
     return writer;
   },
@@ -664,6 +812,14 @@ export const Packet: MessageFns<Packet> = {
           message.denyResponse = DenyResponseMessage.decode(reader, reader.uint32());
           continue;
         }
+        case 10: {
+          if (tag !== 82) {
+            break;
+          }
+
+          message.jwt = JwtMessage.decode(reader, reader.uint32());
+          continue;
+        }
       }
       if ((tag & 7) === 4 || tag === 0) {
         break;
@@ -686,6 +842,7 @@ export const Packet: MessageFns<Packet> = {
         : undefined,
       okResponse: isSet(object.okResponse) ? OkResponseMessage.fromJSON(object.okResponse) : undefined,
       denyResponse: isSet(object.denyResponse) ? DenyResponseMessage.fromJSON(object.denyResponse) : undefined,
+      jwt: isSet(object.jwt) ? JwtMessage.fromJSON(object.jwt) : undefined,
     };
   },
 
@@ -718,6 +875,9 @@ export const Packet: MessageFns<Packet> = {
     if (message.denyResponse !== undefined) {
       obj.denyResponse = DenyResponseMessage.toJSON(message.denyResponse);
     }
+    if (message.jwt !== undefined) {
+      obj.jwt = JwtMessage.toJSON(message.jwt);
+    }
     return obj;
   },
 
@@ -749,6 +909,7 @@ export const Packet: MessageFns<Packet> = {
     message.denyResponse = (object.denyResponse !== undefined && object.denyResponse !== null)
       ? DenyResponseMessage.fromPartial(object.denyResponse)
       : undefined;
+    message.jwt = (object.jwt !== undefined && object.jwt !== null) ? JwtMessage.fromPartial(object.jwt) : undefined;
     return message;
   },
 };

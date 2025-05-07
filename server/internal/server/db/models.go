@@ -4,8 +4,22 @@
 
 package db
 
+import (
+	"database/sql"
+	"time"
+)
+
+type RefreshToken struct {
+	Jti       string
+	UserID    string
+	CreatedAt time.Time
+	ExpireAt  time.Time
+	RevokedAt sql.NullTime
+}
+
 type User struct {
-	ID           int64
+	ID           string
 	Username     string
 	PasswordHash string
+	CreatedAt    time.Time
 }

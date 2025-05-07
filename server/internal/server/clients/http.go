@@ -1,6 +1,7 @@
 package clients
 
 import (
+	"database/sql"
 	"errors"
 	"fmt"
 	"io"
@@ -10,7 +11,10 @@ import (
 	"server/internal/server/db"
 	"server/pkg/packets"
 	"strings"
+	"time"
 
+	"github.com/golang-jwt/jwt/v5"
+	"github.com/segmentio/ksuid"
 	"golang.org/x/crypto/bcrypt"
 	"google.golang.org/protobuf/proto"
 )
@@ -46,9 +50,11 @@ func NewHttpClient(hub *server.Hub, writer http.ResponseWriter, request *http.Re
 
 	switch message := packet.Msg.(type) {
 	case *packets.Packet_LoginRequest:
-		c.handleLoginRequest(message, writer, request)
+		c.handleLoginRequest(message, writer)
 	case *packets.Packet_RegisterRequest:
-		c.handleRegisterRequest(message, writer, request)
+		c.handleRegisterRequest(message, writer)
+	default:
+		http.Error(writer, "Message not supported", http.StatusBadRequest)
 	}
 
 	return c, nil
@@ -82,13 +88,13 @@ func (c *HttpClient) DbTx() *server.DbTx {
 
 func (c *HttpClient) Close(reason string) {}
 
-func (c *HttpClient) handleLoginRequest(packet *packets.Packet_LoginRequest, w http.ResponseWriter, r *http.Request) {
+func (c *HttpClient) handleLoginRequest(packet *packets.Packet_LoginRequest, w http.ResponseWriter) {
 	username := packet.LoginRequest.Username
+	password := packet.LoginRequest.Password
 
-	genericFailMessage := packets.NewDenyResponse("Incorrect username or password")
 	genericFailMessagePacket := &packets.Packet{
 		SenderId: 0,
-		Msg:      genericFailMessage,
+		Msg:      packets.NewDenyResponse("Incorrect username or password"),
 	}
 	genericFailMessageData, err := proto.Marshal(genericFailMessagePacket)
 	if err != nil {
@@ -98,29 +104,49 @@ func (c *HttpClient) handleLoginRequest(packet *packets.Packet_LoginRequest, w h
 
 	user, err := c.dbTx.Queries.GetUserByUsername(c.dbTx.Ctx, username)
 	if err != nil {
-		c.logger.Printf("Error getting user by username: %v", err)
-		w.WriteHeader(http.StatusOK)
-		w.Write(genericFailMessageData)
+		if errors.Is(err, sql.ErrNoRows) {
+			c.logger.Printf("Username not found: %v", err)
+			w.WriteHeader(http.StatusOK)
+			w.Write(genericFailMessageData)
+		} else {
+			c.logger.Printf("Error getting hash by username: %v", err)
+			w.WriteHeader(http.StatusOK)
+			w.Write(genericFailMessageData)
+		}
 		return
 	}
 
-	err = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(packet.LoginRequest.Password))
+	err = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password))
 	if err != nil {
-		c.logger.Printf("incorrect password for user %s", username)
+		c.logger.Printf("Incorrect password for user %s", username)
 		w.WriteHeader(http.StatusOK)
 		w.Write(genericFailMessageData)
 		return
 	}
 
-	success := packets.NewOkResponse()
+	// Generate access and refresh tokens
+	accessToken, _, refreshToken, refreshTokenExpiration, refreshTokenJti, err := generateAccessAndRefreshTokens("myUltraSecretKeyThatDefinitelyIShouldSaveSecurely", user.ID)
+	if err != nil {
+		c.logger.Printf("Error getting jwt tokens: %v", err)
+		http.Error(w, "An error occured", http.StatusInternalServerError)
+		return
+	}
+
+	// Save refresh token on DB
+	c.dbTx.Queries.SaveRefreshToken(c.dbTx.Ctx, db.SaveRefreshTokenParams{
+		Jti:      refreshTokenJti,
+		UserID:   user.ID,
+		ExpireAt: refreshTokenExpiration,
+	})
+
 	successPacket := &packets.Packet{
-		SenderId: 0,
-		Msg:      success,
+		Msg: packets.NewJwt(accessToken, refreshToken),
 	}
 	successData, err := proto.Marshal(successPacket)
 	if err != nil {
 		c.logger.Printf("Failed to marshal success packet: %v", err)
 		http.Error(w, "An error occured", http.StatusInternalServerError)
+		return
 	}
 
 	c.logger.Printf("User %s logged in successfully", username)
@@ -128,22 +154,38 @@ func (c *HttpClient) handleLoginRequest(packet *packets.Packet_LoginRequest, w h
 	w.Write(successData)
 }
 
-func (c *HttpClient) handleRegisterRequest(message *packets.Packet_RegisterRequest, w http.ResponseWriter, r *http.Request) {
+func (c *HttpClient) handleRegisterRequest(message *packets.Packet_RegisterRequest, w http.ResponseWriter) {
 	username := message.RegisterRequest.Username
+	password := message.RegisterRequest.Password
 
-	//! Validate if: - username not empty; - password not weak;
 	err := validateUsername(username)
 	if err != nil {
 		reason := fmt.Sprintf("Invalid username: %v", err)
 		c.logger.Println(reason)
 
 		reasonPacket := &packets.Packet{
-			SenderId: 0,
-			Msg:      packets.NewDenyResponse(reason),
+			Msg: packets.NewDenyResponse(reason),
 		}
 		data, err := proto.Marshal(reasonPacket)
 		if err != nil {
 			c.logger.Printf("Failed to marshal reasonPacket: %v", err)
+			http.Error(w, "An error occured", http.StatusInternalServerError)
+		}
+		w.WriteHeader(http.StatusOK)
+		w.Write(data)
+	}
+
+	err = validatePassword(password)
+	if err != nil {
+		reason := fmt.Sprintf("Invalid password: %v", err)
+		c.logger.Println(reason)
+
+		reasonPacket := &packets.Packet{
+			Msg: packets.NewDenyResponse(reason),
+		}
+		data, err := proto.Marshal(reasonPacket)
+		if err != nil {
+			c.logger.Printf("Failed to mashal reasonPacket: %v", err)
 			http.Error(w, "An error occured", http.StatusInternalServerError)
 		}
 		w.WriteHeader(http.StatusOK)
@@ -177,8 +219,7 @@ func (c *HttpClient) handleRegisterRequest(message *packets.Packet_RegisterReque
 		http.Error(w, "An error occured", http.StatusInternalServerError)
 	}
 
-	// Add new user
-	passwordHash, err := bcrypt.GenerateFromPassword([]byte(message.RegisterRequest.Password), bcrypt.DefaultCost)
+	passwordHash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		c.logger.Printf("Failed to hash password: %v", err)
 		w.WriteHeader(http.StatusOK)
@@ -186,21 +227,15 @@ func (c *HttpClient) handleRegisterRequest(message *packets.Packet_RegisterReque
 		return
 	}
 
-	_, err = c.dbTx.Queries.CreateUser(c.dbTx.Ctx, db.CreateUserParams{
-		Username:     username,
-		PasswordHash: string(passwordHash),
-	})
-	if err != nil {
+	if _, err = addNewUser(c.dbTx, username, string(passwordHash)); err != nil {
 		c.logger.Printf("Failed to create user: %v", err)
 		w.WriteHeader(http.StatusOK)
 		w.Write(genericFailMessageData)
 		return
 	}
 
-	success := packets.NewOkResponse()
 	successPacket := &packets.Packet{
-		SenderId: 0,
-		Msg:      success,
+		Msg: packets.NewOkResponse(),
 	}
 	successData, err := proto.Marshal(successPacket)
 	if err != nil {
@@ -209,7 +244,7 @@ func (c *HttpClient) handleRegisterRequest(message *packets.Packet_RegisterReque
 	}
 
 	c.logger.Printf("User %s registered successfully", username)
-	w.WriteHeader(http.StatusOK)
+	w.WriteHeader(http.StatusCreated)
 	w.Write(successData)
 }
 
@@ -224,4 +259,53 @@ func validateUsername(username string) error {
 		return errors.New("leading or trailing whitespace")
 	}
 	return nil
+}
+
+func validatePassword(password string) error {
+	//! validate if password not weak
+	return nil
+}
+
+func addNewUser(dbTx *server.DbTx, username string, passwordHash string) (db.User, error) {
+	return dbTx.Queries.CreateUser(dbTx.Ctx, db.CreateUserParams{
+		ID:           ksuid.New().String(),
+		Username:     username,
+		PasswordHash: passwordHash,
+	})
+}
+
+func generateAccessAndRefreshTokens(key string, userId string) (
+	accessToken string,
+	accessTokenExpiration time.Time,
+	refreshToken string,
+	refreshTokenExpiration time.Time,
+	refreshTokenJti string,
+	e error,
+) {
+	accessEx := time.Now().Add(time.Minute * 15)
+	refreshEx := time.Now().Add(time.Hour * 168)
+	refreshJti := ksuid.New().String()
+	access, err := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"sub":  userId,
+		"exp":  accessEx,
+		"type": "access",
+	}).SignedString([]byte(key))
+	if err != nil {
+		reason := fmt.Sprintf("Error creating access token: %v", err)
+		return "", time.Now(), "", time.Now(), "", errors.New(reason)
+	}
+
+	refresh, err := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"sub":  userId,
+		"jti":  refreshJti,
+		"iat":  time.Now(),
+		"exp":  refreshEx,
+		"type": "refresh",
+	}).SignedString([]byte(key))
+	if err != nil {
+		reason := fmt.Sprintf("Error creating refresh token: %v", err)
+		return "", time.Now(), "", time.Now(), "", errors.New(reason)
+	}
+
+	return access, accessEx, refresh, refreshEx, refreshJti, nil
 }

@@ -47,3 +47,12 @@ func NewDenyResponse(reason string) Msg {
 		},
 	}
 }
+
+func NewJwt(accessToken string, refreshToken string) Msg {
+	return &Packet_Jwt{
+		Jwt: &JwtMessage{
+			AccessToken:  accessToken,
+			RefreshToken: refreshToken,
+		},
+	}
+}

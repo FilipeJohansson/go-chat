@@ -7,37 +7,166 @@ package db
 
 import (
 	"context"
+	"time"
 )
 
 const createUser = `-- name: CreateUser :one
 INSERT INTO users (
-  username, password_hash
+  id, username, password_hash
 ) VALUES (
-    ?, ?
+  ?, ?, ?
 )
-RETURNING id, username, password_hash
+RETURNING id, username, password_hash, created_at
 `
 
 type CreateUserParams struct {
+	ID           string
 	Username     string
 	PasswordHash string
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
-	row := q.db.QueryRowContext(ctx, createUser, arg.Username, arg.PasswordHash)
+	row := q.db.QueryRowContext(ctx, createUser, arg.ID, arg.Username, arg.PasswordHash)
 	var i User
-	err := row.Scan(&i.ID, &i.Username, &i.PasswordHash)
+	err := row.Scan(
+		&i.ID,
+		&i.Username,
+		&i.PasswordHash,
+		&i.CreatedAt,
+	)
 	return i, err
 }
 
+const deleteExpiredOrRevokedTokens = `-- name: DeleteExpiredOrRevokedTokens :execrows
+DELETE FROM refresh_tokens
+WHERE expire_at <= CURRENT_TIMESTAMP
+  OR revoked_at IS NOT NULL
+`
+
+func (q *Queries) DeleteExpiredOrRevokedTokens(ctx context.Context) (int64, error) {
+	result, err := q.db.ExecContext(ctx, deleteExpiredOrRevokedTokens)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const getUserByUsername = `-- name: GetUserByUsername :one
-SELECT id, username, password_hash FROM users
-WHERE LOWER(username) = LOWER(?) LIMIT 1
+SELECT id, username, password_hash, created_at
+FROM users
+WHERE LOWER(username) = LOWER(?)
+LIMIT 1
 `
 
 func (q *Queries) GetUserByUsername(ctx context.Context, lower string) (User, error) {
 	row := q.db.QueryRowContext(ctx, getUserByUsername, lower)
 	var i User
-	err := row.Scan(&i.ID, &i.Username, &i.PasswordHash)
+	err := row.Scan(
+		&i.ID,
+		&i.Username,
+		&i.PasswordHash,
+		&i.CreatedAt,
+	)
 	return i, err
+}
+
+const isRefreshTokenValid = `-- name: IsRefreshTokenValid :one
+SELECT 1
+FROM refresh_tokens
+WHERE jti = ?
+  AND user_id = ?
+  AND revoked_at IS NULL
+  AND expired_at > CURRENT_TIMESTAMP
+LIMIT 1
+`
+
+type IsRefreshTokenValidParams struct {
+	Jti    string
+	UserID string
+}
+
+func (q *Queries) IsRefreshTokenValid(ctx context.Context, arg IsRefreshTokenValidParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, isRefreshTokenValid, arg.Jti, arg.UserID)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
+const listActiveTokensForUser = `-- name: ListActiveTokensForUser :many
+SELECT jti, user_id, created_at, expire_at, revoked_at
+FROM refresh_tokens
+WHERE user_id = ?
+`
+
+func (q *Queries) ListActiveTokensForUser(ctx context.Context, userID string) ([]RefreshToken, error) {
+	rows, err := q.db.QueryContext(ctx, listActiveTokensForUser, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []RefreshToken
+	for rows.Next() {
+		var i RefreshToken
+		if err := rows.Scan(
+			&i.Jti,
+			&i.UserID,
+			&i.CreatedAt,
+			&i.ExpireAt,
+			&i.RevokedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const revokeToken = `-- name: RevokeToken :exec
+UPDATE refresh_tokens
+SET revoked_at = CURRENT_TIMESTAMP
+WHERE jti = ?
+`
+
+func (q *Queries) RevokeToken(ctx context.Context, jti string) error {
+	_, err := q.db.ExecContext(ctx, revokeToken, jti)
+	return err
+}
+
+const revokeTokensForUser = `-- name: RevokeTokensForUser :execrows
+UPDATE refresh_tokens
+SET revoked_at = CURRENT_TIMESTAMP
+WHERE user_id = ?
+`
+
+func (q *Queries) RevokeTokensForUser(ctx context.Context, userID string) (int64, error) {
+	result, err := q.db.ExecContext(ctx, revokeTokensForUser, userID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const saveRefreshToken = `-- name: SaveRefreshToken :exec
+INSERT INTO refresh_tokens (
+  jti, user_id, expire_at
+) VALUES (
+  ?, ?, ?
+)
+`
+
+type SaveRefreshTokenParams struct {
+	Jti      string
+	UserID   string
+	ExpireAt time.Time
+}
+
+func (q *Queries) SaveRefreshToken(ctx context.Context, arg SaveRefreshTokenParams) error {
+	_, err := q.db.ExecContext(ctx, saveRefreshToken, arg.Jti, arg.UserID, arg.ExpireAt)
+	return err
 }
