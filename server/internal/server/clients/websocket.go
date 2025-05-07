@@ -1,12 +1,14 @@
 package clients
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
 	"time"
 
 	"server/internal/server"
+	"server/internal/server/clients/jwt"
 	"server/internal/server/states"
 	"server/pkg/packets"
 
@@ -21,6 +23,7 @@ var (
 
 type WebSocketClient struct {
 	id       uint64
+	userId   string
 	conn     *websocket.Conn
 	hub      *server.Hub
 	sendChan chan *packets.Packet // To send messages from server to client. WritePump consumes it
@@ -30,6 +33,22 @@ type WebSocketClient struct {
 }
 
 func NewWebSocketClient(hub *server.Hub, writer http.ResponseWriter, request *http.Request) (server.ClientInterfacer, error) {
+	token := request.URL.Query().Get("token")
+	if token == "" {
+		log.Println("Token not provided")
+		writer.WriteHeader(http.StatusUnauthorized)
+		return nil, errors.New("token not provided")
+	}
+
+	accessToken, err := jwt.Validate(token, &jwt.AccessToken{})
+	if err != nil {
+		reason := fmt.Sprintf("error validating token: %v", err)
+		log.Println(reason)
+		writer.WriteHeader(http.StatusUnauthorized)
+		return nil, errors.New(reason)
+	}
+	log.Println("AccessToken valid, upgrading connection")
+
 	upgrader := websocket.Upgrader{
 		ReadBufferSize:  1024,
 		WriteBufferSize: 1024,
@@ -42,6 +61,7 @@ func NewWebSocketClient(hub *server.Hub, writer http.ResponseWriter, request *ht
 	}
 
 	c := &WebSocketClient{
+		userId:   accessToken.ID,
 		hub:      hub,
 		conn:     conn,
 		sendChan: make(chan *packets.Packet, 256),
@@ -57,6 +77,8 @@ func (c *WebSocketClient) Initialize(id uint64) {
 	c.logger.SetPrefix(fmt.Sprintf("Client %d: ", c.id))
 
 	c.SetState(&states.Connected{})
+
+	//! Check if has another client with the same userID connected. If yes, drop it
 
 	c.logger.Printf("Broadcasting new client connected")
 	c.Broadcast(packets.NewRegister(c.id))

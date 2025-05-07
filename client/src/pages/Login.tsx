@@ -1,4 +1,4 @@
-import { LoginRequestMessage, Packet } from "../proto/packets"
+import { LoginRequestMessage, Packet, RegisterRequestMessage } from "../proto/packets"
 
 export function Login() {
 
@@ -6,9 +6,9 @@ export function Login() {
     const loginReq: LoginRequestMessage = LoginRequestMessage.create({
       username: 'filipe', password: '123'
     })
-    // const registerReq: RegisterRequestMessage = RegisterRequestMessage.create({
-    //   username: 'filipe', password: '123'
-    // })
+    const registerReq: RegisterRequestMessage = RegisterRequestMessage.create({
+      username: 'filipe', password: '123'
+    })
     const packet: Packet = Packet.create({ senderId: 0, loginRequest: loginReq })
     // const packet: Packet = Packet.create({ senderId: 0, registerRequest: registerReq })
     send(packet)

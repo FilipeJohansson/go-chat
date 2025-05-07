@@ -8,12 +8,11 @@ import (
 	"log"
 	"net/http"
 	"server/internal/server"
+	"server/internal/server/clients/jwt"
 	"server/internal/server/db"
 	"server/pkg/packets"
 	"strings"
-	"time"
 
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/segmentio/ksuid"
 	"golang.org/x/crypto/bcrypt"
 	"google.golang.org/protobuf/proto"
@@ -125,9 +124,15 @@ func (c *HttpClient) handleLoginRequest(packet *packets.Packet_LoginRequest, w h
 	}
 
 	// Generate access and refresh tokens
-	accessToken, _, refreshToken, refreshTokenExpiration, refreshTokenJti, err := generateAccessAndRefreshTokens("myUltraSecretKeyThatDefinitelyIShouldSaveSecurely", user.ID)
+	accessToken, _, err := jwt.NewAccessToken(user.ID)
 	if err != nil {
-		c.logger.Printf("Error getting jwt tokens: %v", err)
+		c.logger.Printf("error creating access token: %v", err)
+		http.Error(w, "An error occured", http.StatusInternalServerError)
+		return
+	}
+	refreshToken, refreshTokenExpiration, refreshTokenJti, err := jwt.NewRefreshToken(user.ID)
+	if err != nil {
+		c.logger.Printf("error creating refresh token: %v", err)
 		http.Error(w, "An error occured", http.StatusInternalServerError)
 		return
 	}
@@ -136,7 +141,7 @@ func (c *HttpClient) handleLoginRequest(packet *packets.Packet_LoginRequest, w h
 	c.dbTx.Queries.SaveRefreshToken(c.dbTx.Ctx, db.SaveRefreshTokenParams{
 		Jti:      refreshTokenJti,
 		UserID:   user.ID,
-		ExpireAt: refreshTokenExpiration,
+		ExpireAt: refreshTokenExpiration.Time,
 	})
 
 	successPacket := &packets.Packet{
@@ -272,40 +277,4 @@ func addNewUser(dbTx *server.DbTx, username string, passwordHash string) (db.Use
 		Username:     username,
 		PasswordHash: passwordHash,
 	})
-}
-
-func generateAccessAndRefreshTokens(key string, userId string) (
-	accessToken string,
-	accessTokenExpiration time.Time,
-	refreshToken string,
-	refreshTokenExpiration time.Time,
-	refreshTokenJti string,
-	e error,
-) {
-	accessEx := time.Now().Add(time.Minute * 15)
-	refreshEx := time.Now().Add(time.Hour * 168)
-	refreshJti := ksuid.New().String()
-	access, err := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"sub":  userId,
-		"exp":  accessEx,
-		"type": "access",
-	}).SignedString([]byte(key))
-	if err != nil {
-		reason := fmt.Sprintf("Error creating access token: %v", err)
-		return "", time.Now(), "", time.Now(), "", errors.New(reason)
-	}
-
-	refresh, err := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"sub":  userId,
-		"jti":  refreshJti,
-		"iat":  time.Now(),
-		"exp":  refreshEx,
-		"type": "refresh",
-	}).SignedString([]byte(key))
-	if err != nil {
-		reason := fmt.Sprintf("Error creating refresh token: %v", err)
-		return "", time.Now(), "", time.Now(), "", errors.New(reason)
-	}
-
-	return access, accessEx, refresh, refreshEx, refreshJti, nil
 }

@@ -49,7 +49,8 @@ export function useWebSocket() {
       onPacket: onPacketReceived,
     })
 
-    client.connect("ws://localhost:8080/ws")
+    const accessToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyd21MWEljOFNQR0swSnJUakVMT29oR1RQelYiLCJleHAiOjE3NDY2NDk1OTQsInR5cGUiOiJhY2Nlc3MifQ.361tr16FSnDxaqQ4UIhBlnHdzEf4X4j5U8-TS63wTfs"
+    client.connect(`ws://localhost:8080/ws?token=${accessToken}`)
 
     return () => {
       client.clear()

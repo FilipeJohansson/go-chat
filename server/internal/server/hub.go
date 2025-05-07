@@ -148,11 +148,11 @@ func (h *Hub) Run() {
 
 func (h *Hub) Serve(
 	getNewClient func(*Hub, http.ResponseWriter, *http.Request) (ClientInterfacer, error),
-	writter http.ResponseWriter,
+	writer http.ResponseWriter,
 	request *http.Request,
 ) {
 	log.Println("New client connected from", request.RemoteAddr)
-	client, err := getNewClient(h, writter, request)
+	client, err := getNewClient(h, writer, request)
 	if err != nil {
 		log.Printf("Error obtaining client for new connection: %v\n", err)
 		return
