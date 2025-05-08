@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router";
-import { ChatMessage, IdMessage, Packet } from "../proto/packets";
-import { Tokens, clearTokens, getTokens } from "./tokens";
-import { WebSocketClient } from "./websocket";
+import { useEffect, useState } from "react"
+import { useNavigate } from "react-router"
+import { ChatMessage, IdMessage, LogoutRequestMessage, Packet } from "../proto/packets"
+import { Tokens, clearTokens, getTokens } from "./tokens"
+import { WebSocketClient } from "./websocket"
 
 export interface User {
   id: number,
@@ -16,7 +16,7 @@ export interface Message {
 }
 
 export function useWebSocket() {
-  const navigate = useNavigate();
+  const navigate = useNavigate()
 
   const [isConnected, setIsConnected] = useState(false)
   const [messages, setMessages] = useState<Message[]>([])
@@ -120,10 +120,30 @@ export function useWebSocket() {
     const senderUsername: string = connectedUser!.name
     const timestamp: Date = new Date()
     const chatMessage: ChatMessage = { timestamp, senderUsername, msg }
-    const packet: Packet = Packet.create({ senderId, chat: chatMessage })
+    const packet: Packet = Packet.create<Packet>({ senderId, chat: chatMessage })
     WebSocketClient.getInstance().send(packet)
 
     addMessage({ timestamp, user: connectedUser!, message }) // Add a copy of the message on our own side
+  }
+
+  const disconnect = () => {
+    const senderId: number = connectedUser!.id
+    const refreshToken: string = getTokens()!.refreshToken
+    const logoutRequest: LogoutRequestMessage = { refreshToken }
+    const packet: Packet = Packet.create<Packet>({ senderId, logoutRequest })
+    const binary: Uint8Array = Packet.encode(packet).finish()
+    fetch("http://localhost:8080/logout", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/octet-stream"
+      },
+      body: binary,
+      mode: "cors"
+    })
+    .catch(error => console.error("Erro:", error))
+    clearTokens()
+
+    WebSocketClient.getInstance().close(1000, "user logout")
   }
 
   return {
@@ -132,5 +152,6 @@ export function useWebSocket() {
     usersOnline,
     connectedUser,
     sendMessage,
+    disconnect,
   }
 }

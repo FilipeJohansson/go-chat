@@ -1,25 +1,37 @@
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router";
-import { getTokens, saveTokens } from "../internal/tokens";
-import { LoginRequestMessage, Packet } from "../proto/packets";
+import { LoaderCircle } from "lucide-react"
+import { useEffect, useState } from "react"
+import { useNavigate } from "react-router"
+import { clearTokens, getTokens, saveTokens } from "../internal/tokens"
+import { LoginRequestMessage, Packet } from "../proto/packets"
 
 export function Login() {
-  const navigate = useNavigate();
+  const navigate = useNavigate()
 
   const [username, setUsername] = useState<string>('')
   const [password, setPassword] = useState<string>('')
+  const [loading, setLoading] = useState<boolean>(false)
+  const [error, setError] = useState<string | undefined>(undefined)
 
   useEffect(() => {
     if (getTokens()) navigate("/chat")
   }, [])
 
   const handleLogin = (): void => {
+    setError(undefined)
+
+    if (!username || !password) {
+      setError("Blank Username or Password")
+      return
+    }
+
     const loginReq: LoginRequestMessage = LoginRequestMessage.create({ username, password })
     const packet: Packet = Packet.create({ loginRequest: loginReq })
     sendLoginPacket(packet)
   }
 
   const sendLoginPacket = (packet: Packet): void => {
+    setLoading(true)
+
     const binary: Uint8Array = Packet.encode(packet).finish()
     fetch("http://localhost:8080/login", {
       method: "POST",
@@ -33,11 +45,15 @@ export function Login() {
     .then((buffer: ArrayBuffer) => {
       const data: Uint8Array = new Uint8Array(buffer)
       const packet: Packet = Packet.decode(data)
+
+      if (packet.denyResponse) setError(packet.denyResponse.reason)
+
       const accessToken: string | undefined = packet.jwt?.accessToken
       const refreshToken: string | undefined = packet.jwt?.refreshToken
 
       if (!accessToken || !refreshToken) {
-        console.log("error getting access or refresh token")
+        console.log("login: error getting access or refresh token")
+        clearTokens()
         return
       }
 
@@ -45,12 +61,13 @@ export function Login() {
 
       navigate("/chat")
     })
-    .catch(error => console.error("Erro:", error));
+    .catch(error => console.error("Erro:", error))
+    .finally(() => setLoading(false))
   }
 
   return (
     <div className="w-screen h-screen bg-[url(/src/assets/background.png)] flex items-center justify-center bg-no-repeat bg-cover bg-center">
-      <div className="w-[400px] h-[300px] flex flex-col items-center justify-between p-4 gap-4 bg-white rounded-md">
+      <div className="w-[400px] h-[350px] flex flex-col items-center justify-between p-4 gap-4 bg-white rounded-md">
         <div>
           <span className="text-xl">Login</span>
         </div>
@@ -79,11 +96,17 @@ export function Login() {
           </div>
         </div>
 
+        {error && <div className="text-red-500">
+          <span>{error}</span>
+        </div>}
+
         <button
-          className="w-full h-10 bg-blue-500 rounded-xl hover:bg-pink-500 transition"
+          className="flex flex-row items-center justify-center w-full h-10 text-white bg-blue-500 rounded-xl hover:bg-pink-500 transition"
           onClick={handleLogin}
         >
-          <span className="text-white font-semibold">LOGIN</span>
+         {loading
+         ? <LoaderCircle className="animate-spin" />
+         : <span className="font-semibold">LOGIN</span>}
         </button>
       </div>
     </div>

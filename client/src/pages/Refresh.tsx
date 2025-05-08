@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router";
-import { getTokens, saveTokens } from "../internal/tokens";
+import { clearTokens, getTokens, saveTokens } from "../internal/tokens";
 import { Packet, RefreshRequestMessage } from "../proto/packets";
 
 export function Refresh() {
@@ -42,7 +42,8 @@ export function Refresh() {
       const refreshToken: string | undefined = packet.jwt?.refreshToken
 
       if (!accessToken || !refreshToken) {
-        console.log("error getting access or refresh token")
+        console.log("refresh: error getting access or refresh token")
+        clearTokens()
         navigate("/login")
         return
       }

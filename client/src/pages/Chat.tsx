@@ -1,4 +1,4 @@
-import { Send } from "lucide-react";
+import { LogOut, Send } from "lucide-react";
 import { useState } from "react";
 import { OnlineUser } from "../components/OnlineUser";
 import { Painel } from "../components/Painel";
@@ -6,7 +6,7 @@ import { UserMessage } from "../components/UserMessage";
 import { Message, User, useWebSocket } from "../internal/useWebSocket";
 
 export function Chat() {
-  const { isConnected, connectedUser, messages, usersOnline, sendMessage } = useWebSocket()
+  const { isConnected, connectedUser, messages, usersOnline, sendMessage, disconnect } = useWebSocket()
 
   const [mesageContent, setMessageContent] = useState('')
 
@@ -51,10 +51,20 @@ export function Chat() {
           </button>
         </div>
 
-        <div>
+        <div className="flex flex-row justify-between">
           <div className="flex items-center gap-1">
             <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-400' : 'animate-pulse bg-red-400'}`}></div>
             <span className="text-white text-xs">{isConnected ? 'Connected' : 'Disconnected'}</span>
+          </div>
+          
+          <div className="flex items-center gap-1">
+            <button
+              className="flex fle-row items-center rounded-sm bg-red-500 p-0.5 text-white text-xs"
+              onClick={disconnect}
+            >
+              <LogOut className="w-3 h-3" />
+              <span>Leave</span>
+            </button>
           </div>
         </div>
       </div>

@@ -1,3 +1,4 @@
+import { LoaderCircle } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { getTokens } from "../internal/tokens";
@@ -9,14 +10,23 @@ export function Register() {
   const [username, setUsername] = useState<string>('')
   const [password, setPassword] = useState<string>('')
   const [repeatedPassword, setRepeatedPassword] = useState<string>('')
+  const [loading, setLoading] = useState<boolean>(false)
+  const [error, setError] = useState<string | undefined>(undefined)
 
   useEffect(() => {
     if (getTokens()) navigate("/chat")
   }, [])
 
   const handleRegister = (): void => {
+    setError(undefined)
+
     if (password !== repeatedPassword) {
-      console.log("The passwords must be identical")
+      setError("Passwords must be identical")
+      return
+    }
+
+    if (!username || !password) {
+      setError("Blank Username or Password")
       return
     }
 
@@ -28,6 +38,8 @@ export function Register() {
   }
 
   const sendRegisterPacket = (packet: Packet): void => {
+    setLoading(true)
+
     const binary: Uint8Array = Packet.encode(packet).finish()
     fetch("http://localhost:8080/login", {
       method: "POST",
@@ -42,8 +54,11 @@ export function Register() {
       const data = new Uint8Array(buffer)
       const packet = Packet.decode(data)
       console.log("Server Response:", packet)
+      if (packet.okResponse) navigate("/login")
+      if (packet.denyResponse) setError(packet.denyResponse.reason)
     })
-    .catch(error => console.error("Erro:", error));
+    .catch(error => console.error("Erro:", error))
+    .finally(() => setLoading(false));
   }
 
   return (
@@ -87,11 +102,17 @@ export function Register() {
           </div>
         </div>
 
+        {error && <div className="text-red-500">
+          <span>{error}</span>
+        </div>}
+
         <button
-          className="w-full h-10 bg-blue-500 rounded-xl hover:bg-pink-500 transition"
+          className="flex flex-row items-center justify-center w-full h-10 text-white bg-blue-500 rounded-xl hover:bg-pink-500 transition"
           onClick={handleRegister}
         >
-          <span className="text-white font-semibold">REGISTER</span>
+         {loading
+         ? <LoaderCircle className="animate-spin" />
+         : <span className="font-semibold">REGISTER</span>}
         </button>
       </div>
     </div>

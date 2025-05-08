@@ -32,6 +32,9 @@ func main() {
 	mux.HandleFunc("/refresh", func(w http.ResponseWriter, r *http.Request) {
 		hub.Serve(clients.NewHttpClient, w, r)
 	})
+	mux.HandleFunc("/logout", func(w http.ResponseWriter, r *http.Request) {
+		hub.Serve(clients.NewHttpClient, w, r)
+	})
 	// Define the handler for WebSocket connections
 	mux.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
 		hub.Serve(clients.NewWebSocketClient, w, r)

@@ -378,6 +378,50 @@ func (x *RefreshRequestMessage) GetRefreshToken() string {
 	return ""
 }
 
+type LogoutRequestMessage struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	RefreshToken  string                 `protobuf:"bytes,1,opt,name=refresh_token,json=refreshToken,proto3" json:"refresh_token,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *LogoutRequestMessage) Reset() {
+	*x = LogoutRequestMessage{}
+	mi := &file_packets_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *LogoutRequestMessage) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*LogoutRequestMessage) ProtoMessage() {}
+
+func (x *LogoutRequestMessage) ProtoReflect() protoreflect.Message {
+	mi := &file_packets_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use LogoutRequestMessage.ProtoReflect.Descriptor instead.
+func (*LogoutRequestMessage) Descriptor() ([]byte, []int) {
+	return file_packets_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *LogoutRequestMessage) GetRefreshToken() string {
+	if x != nil {
+		return x.RefreshToken
+	}
+	return ""
+}
+
 type OkResponseMessage struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields
@@ -386,7 +430,7 @@ type OkResponseMessage struct {
 
 func (x *OkResponseMessage) Reset() {
 	*x = OkResponseMessage{}
-	mi := &file_packets_proto_msgTypes[7]
+	mi := &file_packets_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -398,7 +442,7 @@ func (x *OkResponseMessage) String() string {
 func (*OkResponseMessage) ProtoMessage() {}
 
 func (x *OkResponseMessage) ProtoReflect() protoreflect.Message {
-	mi := &file_packets_proto_msgTypes[7]
+	mi := &file_packets_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -411,7 +455,7 @@ func (x *OkResponseMessage) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OkResponseMessage.ProtoReflect.Descriptor instead.
 func (*OkResponseMessage) Descriptor() ([]byte, []int) {
-	return file_packets_proto_rawDescGZIP(), []int{7}
+	return file_packets_proto_rawDescGZIP(), []int{8}
 }
 
 type DenyResponseMessage struct {
@@ -423,7 +467,7 @@ type DenyResponseMessage struct {
 
 func (x *DenyResponseMessage) Reset() {
 	*x = DenyResponseMessage{}
-	mi := &file_packets_proto_msgTypes[8]
+	mi := &file_packets_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -435,7 +479,7 @@ func (x *DenyResponseMessage) String() string {
 func (*DenyResponseMessage) ProtoMessage() {}
 
 func (x *DenyResponseMessage) ProtoReflect() protoreflect.Message {
-	mi := &file_packets_proto_msgTypes[8]
+	mi := &file_packets_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -448,7 +492,7 @@ func (x *DenyResponseMessage) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DenyResponseMessage.ProtoReflect.Descriptor instead.
 func (*DenyResponseMessage) Descriptor() ([]byte, []int) {
-	return file_packets_proto_rawDescGZIP(), []int{8}
+	return file_packets_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *DenyResponseMessage) GetReason() string {
@@ -468,7 +512,7 @@ type JwtMessage struct {
 
 func (x *JwtMessage) Reset() {
 	*x = JwtMessage{}
-	mi := &file_packets_proto_msgTypes[9]
+	mi := &file_packets_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -480,7 +524,7 @@ func (x *JwtMessage) String() string {
 func (*JwtMessage) ProtoMessage() {}
 
 func (x *JwtMessage) ProtoReflect() protoreflect.Message {
-	mi := &file_packets_proto_msgTypes[9]
+	mi := &file_packets_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -493,7 +537,7 @@ func (x *JwtMessage) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use JwtMessage.ProtoReflect.Descriptor instead.
 func (*JwtMessage) Descriptor() ([]byte, []int) {
-	return file_packets_proto_rawDescGZIP(), []int{9}
+	return file_packets_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *JwtMessage) GetAccessToken() string {
@@ -522,6 +566,7 @@ type Packet struct {
 	//	*Packet_LoginRequest
 	//	*Packet_RegisterRequest
 	//	*Packet_RefreshRequest
+	//	*Packet_LogoutRequest
 	//	*Packet_OkResponse
 	//	*Packet_DenyResponse
 	//	*Packet_Jwt
@@ -532,7 +577,7 @@ type Packet struct {
 
 func (x *Packet) Reset() {
 	*x = Packet{}
-	mi := &file_packets_proto_msgTypes[10]
+	mi := &file_packets_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -544,7 +589,7 @@ func (x *Packet) String() string {
 func (*Packet) ProtoMessage() {}
 
 func (x *Packet) ProtoReflect() protoreflect.Message {
-	mi := &file_packets_proto_msgTypes[10]
+	mi := &file_packets_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -557,7 +602,7 @@ func (x *Packet) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Packet.ProtoReflect.Descriptor instead.
 func (*Packet) Descriptor() ([]byte, []int) {
-	return file_packets_proto_rawDescGZIP(), []int{10}
+	return file_packets_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *Packet) GetSenderId() uint64 {
@@ -637,6 +682,15 @@ func (x *Packet) GetRefreshRequest() *RefreshRequestMessage {
 	return nil
 }
 
+func (x *Packet) GetLogoutRequest() *LogoutRequestMessage {
+	if x != nil {
+		if x, ok := x.Msg.(*Packet_LogoutRequest); ok {
+			return x.LogoutRequest
+		}
+	}
+	return nil
+}
+
 func (x *Packet) GetOkResponse() *OkResponseMessage {
 	if x != nil {
 		if x, ok := x.Msg.(*Packet_OkResponse); ok {
@@ -696,16 +750,20 @@ type Packet_RefreshRequest struct {
 	RefreshRequest *RefreshRequestMessage `protobuf:"bytes,8,opt,name=refresh_request,json=refreshRequest,proto3,oneof"`
 }
 
+type Packet_LogoutRequest struct {
+	LogoutRequest *LogoutRequestMessage `protobuf:"bytes,9,opt,name=logout_request,json=logoutRequest,proto3,oneof"`
+}
+
 type Packet_OkResponse struct {
-	OkResponse *OkResponseMessage `protobuf:"bytes,9,opt,name=ok_response,json=okResponse,proto3,oneof"`
+	OkResponse *OkResponseMessage `protobuf:"bytes,10,opt,name=ok_response,json=okResponse,proto3,oneof"`
 }
 
 type Packet_DenyResponse struct {
-	DenyResponse *DenyResponseMessage `protobuf:"bytes,10,opt,name=deny_response,json=denyResponse,proto3,oneof"`
+	DenyResponse *DenyResponseMessage `protobuf:"bytes,11,opt,name=deny_response,json=denyResponse,proto3,oneof"`
 }
 
 type Packet_Jwt struct {
-	Jwt *JwtMessage `protobuf:"bytes,11,opt,name=jwt,proto3,oneof"`
+	Jwt *JwtMessage `protobuf:"bytes,12,opt,name=jwt,proto3,oneof"`
 }
 
 func (*Packet_Chat) isPacket_Msg() {}
@@ -721,6 +779,8 @@ func (*Packet_LoginRequest) isPacket_Msg() {}
 func (*Packet_RegisterRequest) isPacket_Msg() {}
 
 func (*Packet_RefreshRequest) isPacket_Msg() {}
+
+func (*Packet_LogoutRequest) isPacket_Msg() {}
 
 func (*Packet_OkResponse) isPacket_Msg() {}
 
@@ -752,6 +812,8 @@ const file_packets_proto_rawDesc = "" +
 	"\busername\x18\x01 \x01(\tR\busername\x12\x1a\n" +
 	"\bpassword\x18\x02 \x01(\tR\bpassword\"<\n" +
 	"\x15RefreshRequestMessage\x12#\n" +
+	"\rrefresh_token\x18\x01 \x01(\tR\frefreshToken\";\n" +
+	"\x14LogoutRequestMessage\x12#\n" +
 	"\rrefresh_token\x18\x01 \x01(\tR\frefreshToken\"\x13\n" +
 	"\x11OkResponseMessage\"-\n" +
 	"\x13DenyResponseMessage\x12\x16\n" +
@@ -759,7 +821,7 @@ const file_packets_proto_rawDesc = "" +
 	"\n" +
 	"JwtMessage\x12!\n" +
 	"\faccess_token\x18\x01 \x01(\tR\vaccessToken\x12#\n" +
-	"\rrefresh_token\x18\x02 \x01(\tR\frefreshToken\"\xff\x04\n" +
+	"\rrefresh_token\x18\x02 \x01(\tR\frefreshToken\"\xc7\x05\n" +
 	"\x06Packet\x12\x1b\n" +
 	"\tsender_id\x18\x01 \x01(\x04R\bsenderId\x12*\n" +
 	"\x04chat\x18\x02 \x01(\v2\x14.packets.ChatMessageH\x00R\x04chat\x12$\n" +
@@ -770,12 +832,13 @@ const file_packets_proto_rawDesc = "" +
 	"unregister\x12C\n" +
 	"\rlogin_request\x18\x06 \x01(\v2\x1c.packets.LoginRequestMessageH\x00R\floginRequest\x12L\n" +
 	"\x10register_request\x18\a \x01(\v2\x1f.packets.RegisterRequestMessageH\x00R\x0fregisterRequest\x12I\n" +
-	"\x0frefresh_request\x18\b \x01(\v2\x1e.packets.RefreshRequestMessageH\x00R\x0erefreshRequest\x12=\n" +
-	"\vok_response\x18\t \x01(\v2\x1a.packets.OkResponseMessageH\x00R\n" +
+	"\x0frefresh_request\x18\b \x01(\v2\x1e.packets.RefreshRequestMessageH\x00R\x0erefreshRequest\x12F\n" +
+	"\x0elogout_request\x18\t \x01(\v2\x1d.packets.LogoutRequestMessageH\x00R\rlogoutRequest\x12=\n" +
+	"\vok_response\x18\n" +
+	" \x01(\v2\x1a.packets.OkResponseMessageH\x00R\n" +
 	"okResponse\x12C\n" +
-	"\rdeny_response\x18\n" +
-	" \x01(\v2\x1c.packets.DenyResponseMessageH\x00R\fdenyResponse\x12'\n" +
-	"\x03jwt\x18\v \x01(\v2\x13.packets.JwtMessageH\x00R\x03jwtB\x05\n" +
+	"\rdeny_response\x18\v \x01(\v2\x1c.packets.DenyResponseMessageH\x00R\fdenyResponse\x12'\n" +
+	"\x03jwt\x18\f \x01(\v2\x13.packets.JwtMessageH\x00R\x03jwtB\x05\n" +
 	"\x03msgB\rZ\vpkg/packetsb\x06proto3"
 
 var (
@@ -790,7 +853,7 @@ func file_packets_proto_rawDescGZIP() []byte {
 	return file_packets_proto_rawDescData
 }
 
-var file_packets_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
+var file_packets_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
 var file_packets_proto_goTypes = []any{
 	(*ChatMessage)(nil),            // 0: packets.ChatMessage
 	(*IdMessage)(nil),              // 1: packets.IdMessage
@@ -799,14 +862,15 @@ var file_packets_proto_goTypes = []any{
 	(*LoginRequestMessage)(nil),    // 4: packets.LoginRequestMessage
 	(*RegisterRequestMessage)(nil), // 5: packets.RegisterRequestMessage
 	(*RefreshRequestMessage)(nil),  // 6: packets.RefreshRequestMessage
-	(*OkResponseMessage)(nil),      // 7: packets.OkResponseMessage
-	(*DenyResponseMessage)(nil),    // 8: packets.DenyResponseMessage
-	(*JwtMessage)(nil),             // 9: packets.JwtMessage
-	(*Packet)(nil),                 // 10: packets.Packet
-	(*timestamppb.Timestamp)(nil),  // 11: google.protobuf.Timestamp
+	(*LogoutRequestMessage)(nil),   // 7: packets.LogoutRequestMessage
+	(*OkResponseMessage)(nil),      // 8: packets.OkResponseMessage
+	(*DenyResponseMessage)(nil),    // 9: packets.DenyResponseMessage
+	(*JwtMessage)(nil),             // 10: packets.JwtMessage
+	(*Packet)(nil),                 // 11: packets.Packet
+	(*timestamppb.Timestamp)(nil),  // 12: google.protobuf.Timestamp
 }
 var file_packets_proto_depIdxs = []int32{
-	11, // 0: packets.ChatMessage.timestamp:type_name -> google.protobuf.Timestamp
+	12, // 0: packets.ChatMessage.timestamp:type_name -> google.protobuf.Timestamp
 	0,  // 1: packets.Packet.chat:type_name -> packets.ChatMessage
 	1,  // 2: packets.Packet.id:type_name -> packets.IdMessage
 	2,  // 3: packets.Packet.register:type_name -> packets.RegisterMessage
@@ -814,14 +878,15 @@ var file_packets_proto_depIdxs = []int32{
 	4,  // 5: packets.Packet.login_request:type_name -> packets.LoginRequestMessage
 	5,  // 6: packets.Packet.register_request:type_name -> packets.RegisterRequestMessage
 	6,  // 7: packets.Packet.refresh_request:type_name -> packets.RefreshRequestMessage
-	7,  // 8: packets.Packet.ok_response:type_name -> packets.OkResponseMessage
-	8,  // 9: packets.Packet.deny_response:type_name -> packets.DenyResponseMessage
-	9,  // 10: packets.Packet.jwt:type_name -> packets.JwtMessage
-	11, // [11:11] is the sub-list for method output_type
-	11, // [11:11] is the sub-list for method input_type
-	11, // [11:11] is the sub-list for extension type_name
-	11, // [11:11] is the sub-list for extension extendee
-	0,  // [0:11] is the sub-list for field type_name
+	7,  // 8: packets.Packet.logout_request:type_name -> packets.LogoutRequestMessage
+	8,  // 9: packets.Packet.ok_response:type_name -> packets.OkResponseMessage
+	9,  // 10: packets.Packet.deny_response:type_name -> packets.DenyResponseMessage
+	10, // 11: packets.Packet.jwt:type_name -> packets.JwtMessage
+	12, // [12:12] is the sub-list for method output_type
+	12, // [12:12] is the sub-list for method input_type
+	12, // [12:12] is the sub-list for extension type_name
+	12, // [12:12] is the sub-list for extension extendee
+	0,  // [0:12] is the sub-list for field type_name
 }
 
 func init() { file_packets_proto_init() }
@@ -829,7 +894,7 @@ func file_packets_proto_init() {
 	if File_packets_proto != nil {
 		return
 	}
-	file_packets_proto_msgTypes[10].OneofWrappers = []any{
+	file_packets_proto_msgTypes[11].OneofWrappers = []any{
 		(*Packet_Chat)(nil),
 		(*Packet_Id)(nil),
 		(*Packet_Register)(nil),
@@ -837,6 +902,7 @@ func file_packets_proto_init() {
 		(*Packet_LoginRequest)(nil),
 		(*Packet_RegisterRequest)(nil),
 		(*Packet_RefreshRequest)(nil),
+		(*Packet_LogoutRequest)(nil),
 		(*Packet_OkResponse)(nil),
 		(*Packet_DenyResponse)(nil),
 		(*Packet_Jwt)(nil),
@@ -847,7 +913,7 @@ func file_packets_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_packets_proto_rawDesc), len(file_packets_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   11,
+			NumMessages:   12,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

@@ -44,6 +44,10 @@ export interface RefreshRequestMessage {
   refreshToken: string;
 }
 
+export interface LogoutRequestMessage {
+  refreshToken: string;
+}
+
 export interface OkResponseMessage {
 }
 
@@ -65,6 +69,7 @@ export interface Packet {
   loginRequest?: LoginRequestMessage | undefined;
   registerRequest?: RegisterRequestMessage | undefined;
   refreshRequest?: RefreshRequestMessage | undefined;
+  logoutRequest?: LogoutRequestMessage | undefined;
   okResponse?: OkResponseMessage | undefined;
   denyResponse?: DenyResponseMessage | undefined;
   jwt?: JwtMessage | undefined;
@@ -582,6 +587,64 @@ export const RefreshRequestMessage: MessageFns<RefreshRequestMessage> = {
   },
 };
 
+function createBaseLogoutRequestMessage(): LogoutRequestMessage {
+  return { refreshToken: "" };
+}
+
+export const LogoutRequestMessage: MessageFns<LogoutRequestMessage> = {
+  encode(message: LogoutRequestMessage, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.refreshToken !== "") {
+      writer.uint32(10).string(message.refreshToken);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): LogoutRequestMessage {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseLogoutRequestMessage();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.refreshToken = reader.string();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): LogoutRequestMessage {
+    return { refreshToken: isSet(object.refreshToken) ? globalThis.String(object.refreshToken) : "" };
+  },
+
+  toJSON(message: LogoutRequestMessage): unknown {
+    const obj: any = {};
+    if (message.refreshToken !== "") {
+      obj.refreshToken = message.refreshToken;
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<LogoutRequestMessage>, I>>(base?: I): LogoutRequestMessage {
+    return LogoutRequestMessage.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<LogoutRequestMessage>, I>>(object: I): LogoutRequestMessage {
+    const message = createBaseLogoutRequestMessage();
+    message.refreshToken = object.refreshToken ?? "";
+    return message;
+  },
+};
+
 function createBaseOkResponseMessage(): OkResponseMessage {
   return {};
 }
@@ -769,6 +832,7 @@ function createBasePacket(): Packet {
     loginRequest: undefined,
     registerRequest: undefined,
     refreshRequest: undefined,
+    logoutRequest: undefined,
     okResponse: undefined,
     denyResponse: undefined,
     jwt: undefined,
@@ -801,14 +865,17 @@ export const Packet: MessageFns<Packet> = {
     if (message.refreshRequest !== undefined) {
       RefreshRequestMessage.encode(message.refreshRequest, writer.uint32(66).fork()).join();
     }
+    if (message.logoutRequest !== undefined) {
+      LogoutRequestMessage.encode(message.logoutRequest, writer.uint32(74).fork()).join();
+    }
     if (message.okResponse !== undefined) {
-      OkResponseMessage.encode(message.okResponse, writer.uint32(74).fork()).join();
+      OkResponseMessage.encode(message.okResponse, writer.uint32(82).fork()).join();
     }
     if (message.denyResponse !== undefined) {
-      DenyResponseMessage.encode(message.denyResponse, writer.uint32(82).fork()).join();
+      DenyResponseMessage.encode(message.denyResponse, writer.uint32(90).fork()).join();
     }
     if (message.jwt !== undefined) {
-      JwtMessage.encode(message.jwt, writer.uint32(90).fork()).join();
+      JwtMessage.encode(message.jwt, writer.uint32(98).fork()).join();
     }
     return writer;
   },
@@ -889,7 +956,7 @@ export const Packet: MessageFns<Packet> = {
             break;
           }
 
-          message.okResponse = OkResponseMessage.decode(reader, reader.uint32());
+          message.logoutRequest = LogoutRequestMessage.decode(reader, reader.uint32());
           continue;
         }
         case 10: {
@@ -897,11 +964,19 @@ export const Packet: MessageFns<Packet> = {
             break;
           }
 
-          message.denyResponse = DenyResponseMessage.decode(reader, reader.uint32());
+          message.okResponse = OkResponseMessage.decode(reader, reader.uint32());
           continue;
         }
         case 11: {
           if (tag !== 90) {
+            break;
+          }
+
+          message.denyResponse = DenyResponseMessage.decode(reader, reader.uint32());
+          continue;
+        }
+        case 12: {
+          if (tag !== 98) {
             break;
           }
 
@@ -929,6 +1004,7 @@ export const Packet: MessageFns<Packet> = {
         ? RegisterRequestMessage.fromJSON(object.registerRequest)
         : undefined,
       refreshRequest: isSet(object.refreshRequest) ? RefreshRequestMessage.fromJSON(object.refreshRequest) : undefined,
+      logoutRequest: isSet(object.logoutRequest) ? LogoutRequestMessage.fromJSON(object.logoutRequest) : undefined,
       okResponse: isSet(object.okResponse) ? OkResponseMessage.fromJSON(object.okResponse) : undefined,
       denyResponse: isSet(object.denyResponse) ? DenyResponseMessage.fromJSON(object.denyResponse) : undefined,
       jwt: isSet(object.jwt) ? JwtMessage.fromJSON(object.jwt) : undefined,
@@ -960,6 +1036,9 @@ export const Packet: MessageFns<Packet> = {
     }
     if (message.refreshRequest !== undefined) {
       obj.refreshRequest = RefreshRequestMessage.toJSON(message.refreshRequest);
+    }
+    if (message.logoutRequest !== undefined) {
+      obj.logoutRequest = LogoutRequestMessage.toJSON(message.logoutRequest);
     }
     if (message.okResponse !== undefined) {
       obj.okResponse = OkResponseMessage.toJSON(message.okResponse);
@@ -997,6 +1076,9 @@ export const Packet: MessageFns<Packet> = {
       : undefined;
     message.refreshRequest = (object.refreshRequest !== undefined && object.refreshRequest !== null)
       ? RefreshRequestMessage.fromPartial(object.refreshRequest)
+      : undefined;
+    message.logoutRequest = (object.logoutRequest !== undefined && object.logoutRequest !== null)
+      ? LogoutRequestMessage.fromPartial(object.logoutRequest)
       : undefined;
     message.okResponse = (object.okResponse !== undefined && object.okResponse !== null)
       ? OkResponseMessage.fromPartial(object.okResponse)

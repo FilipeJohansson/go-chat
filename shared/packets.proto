@@ -12,6 +12,7 @@ message UnregisterMessage { uint64 id = 1; }
 message LoginRequestMessage { string username = 1; string password = 2; }
 message RegisterRequestMessage { string username = 1; string password = 2; }
 message RefreshRequestMessage { string refresh_token = 1; }
+message LogoutRequestMessage { string refresh_token = 1; }
 message OkResponseMessage { }
 message DenyResponseMessage { string reason = 1; }
 message JwtMessage { string access_token = 1; string refresh_token = 2; }
@@ -26,8 +27,9 @@ message Packet {
     LoginRequestMessage login_request = 6;
     RegisterRequestMessage register_request = 7;
     RefreshRequestMessage refresh_request = 8;
-    OkResponseMessage ok_response = 9;
-    DenyResponseMessage deny_response = 10;
-    JwtMessage jwt = 11;
+    LogoutRequestMessage logout_request = 9;
+    OkResponseMessage ok_response = 10;
+    DenyResponseMessage deny_response = 11;
+    JwtMessage jwt = 12;
   }
 }

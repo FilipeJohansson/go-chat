@@ -60,6 +60,8 @@ func NewHttpClient(hub *server.Hub, writer http.ResponseWriter, request *http.Re
 		c.handleRegisterRequest(message, writer)
 	case *packets.Packet_RefreshRequest:
 		c.handleRefreshRequest(message, writer)
+	case *packets.Packet_LogoutRequest:
+		c.handleLogoutRequest(message, writer)
 	default:
 		http.Error(writer, "Message not supported", http.StatusBadRequest)
 	}
@@ -269,7 +271,7 @@ func (c *HttpClient) handleRefreshRequest(message *packets.Packet_RefreshRequest
 	if token == "" {
 		reason := "token not provided"
 		c.logger.Println(reason)
-		w.WriteHeader(http.StatusUnauthorized)
+		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
@@ -283,7 +285,7 @@ func (c *HttpClient) handleRefreshRequest(message *packets.Packet_RefreshRequest
 	case refreshToken.Type != "refresh":
 		reason := "token is not refresh token"
 		c.logger.Println(reason)
-		w.WriteHeader(http.StatusUnauthorized)
+		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
@@ -323,6 +325,43 @@ func (c *HttpClient) handleRefreshRequest(message *packets.Packet_RefreshRequest
 	c.logger.Printf("Refresh successfull for user id %v", userId)
 	w.WriteHeader(http.StatusOK)
 	w.Write(successData)
+}
+
+func (c *HttpClient) handleLogoutRequest(message *packets.Packet_LogoutRequest, w http.ResponseWriter) {
+	token := message.LogoutRequest.GetRefreshToken()
+	if token == "" {
+		reason := "token not provided"
+		c.logger.Println(reason)
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	refreshToken, err := jwt.Validate(token, &jwt.RefreshToken{})
+	switch {
+	case err != nil:
+		reason := fmt.Sprintf("error validating token: %v", err)
+		c.logger.Println(reason)
+		w.Write([]byte(``))
+		return
+	case refreshToken.Type != "refresh":
+		reason := "token is not refresh token"
+		c.logger.Println(reason)
+		w.Write([]byte(``))
+		return
+	}
+
+	jti := refreshToken.ID
+	err = c.dbTx.Queries.RevokeToken(c.dbTx.Ctx, jti)
+	if err != nil {
+		reason := fmt.Sprintf("error on revoke token: %v", err)
+		c.logger.Println(reason)
+		w.Write([]byte(``))
+		return
+	}
+
+	c.logger.Println("RefreshToken revoked")
+
+	w.Write([]byte(``))
 }
 
 func validateUsername(username string) error {
