@@ -51,10 +51,12 @@ type ClientInterfacer interface {
 	Initialize(id uint64)
 
 	Id() uint64
+	UserId() string
 	Username() string
 	ProcessMessage(senderId uint64, message packets.Msg)
 
 	SetState(state ClientStateHandler)
+	GetState() ClientStateHandler
 
 	// Puts data from this client into the write pump
 	SocketSend(message packets.Msg)
@@ -140,7 +142,7 @@ func (h *Hub) Run() {
 			h.Clients.Remove(client.Id())
 		case packet := <-h.BroadcastChan:
 			h.Clients.ForEach(func(clientId uint64, client ClientInterfacer) {
-				if clientId != packet.SenderId {
+				if clientId != packet.SenderId && client.GetState() != nil {
 					client.ProcessMessage(packet.SenderId, packet.Msg)
 				}
 			})

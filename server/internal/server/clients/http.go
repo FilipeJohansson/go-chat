@@ -65,11 +65,19 @@ func (c *HttpClient) Id() uint64 {
 	return 0
 }
 
+func (c *HttpClient) UserId() string {
+	return ""
+}
+
 func (c *HttpClient) Username() string {
 	return ""
 }
 
 func (c *HttpClient) SetState(state server.ClientStateHandler) {}
+
+func (c *HttpClient) GetState() server.ClientStateHandler {
+	return nil
+}
 
 func (c *HttpClient) ProcessMessage(senderId uint64, message packets.Msg) {}
 

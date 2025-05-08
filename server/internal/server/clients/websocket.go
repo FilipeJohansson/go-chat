@@ -93,7 +93,17 @@ func (c *WebSocketClient) Initialize(id uint64) {
 
 	c.SetState(&states.Connected{})
 
-	//! Check if has another client with the same userID connected. If yes, drop it
+	// Check if has another client with the same userID connected. If yes, drop it
+	c.hub.Clients.ForEach(func(clientId uint64, client server.ClientInterfacer) {
+		if clientId == c.Id() {
+			return
+		}
+
+		if c.userId == client.UserId() {
+			c.logger.Printf("Clients %v and %v with the same userId. Disconnecting client %v", c.id, clientId, clientId)
+			client.Close("Another connection was found")
+		}
+	})
 
 	c.logger.Printf("Broadcasting new client connected")
 	c.Broadcast(packets.NewRegister(c.id, c.username))
@@ -114,6 +124,10 @@ func (c *WebSocketClient) Initialize(id uint64) {
 
 func (c *WebSocketClient) Id() uint64 {
 	return c.id
+}
+
+func (c *WebSocketClient) UserId() string {
+	return c.userId
 }
 
 func (c *WebSocketClient) Username() string {
@@ -140,6 +154,10 @@ func (c *WebSocketClient) SetState(state server.ClientStateHandler) {
 		c.state.SetClient(c)
 		c.state.OnEnter()
 	}
+}
+
+func (c *WebSocketClient) GetState() server.ClientStateHandler {
+	return c.state
 }
 
 func (c *WebSocketClient) ProcessMessage(senderId uint64, message packets.Msg) {
@@ -279,14 +297,17 @@ func (c *WebSocketClient) Close(reason string) {
 
 	c.SetState(nil)
 
-	c.hub.UnregisterChan <- c
 	c.conn.Close()
 
 	select {
-	case <-c.sendChan:
+	case c.hub.UnregisterChan <- c:
 	default:
-		close(c.sendChan)
 	}
+
+	defer func() {
+		recover()
+	}()
+	close(c.sendChan)
 }
 
 func (c *WebSocketClient) pongHandler(pongMsg string) error {
