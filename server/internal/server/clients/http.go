@@ -141,12 +141,21 @@ func (c *HttpClient) handleLoginRequest(packet *packets.Packet_LoginRequest, w h
 		return
 	}
 
+	// Revoken all open refresh tokens for that user before save the new one
+	_, err = c.dbTx.Queries.RevokeTokensForUser(c.dbTx.Ctx, user.ID)
+	if err != nil {
+		c.logger.Printf("error revoking tokens for user. But users still need to connect, so continuing")
+	}
+
 	// Save refresh token on DB
-	c.dbTx.Queries.SaveRefreshToken(c.dbTx.Ctx, db.SaveRefreshTokenParams{
+	err = c.dbTx.Queries.SaveRefreshToken(c.dbTx.Ctx, db.SaveRefreshTokenParams{
 		Jti:      refreshTokenJti,
 		UserID:   user.ID,
 		ExpireAt: refreshTokenExpiration.Time,
 	})
+	if err != nil {
+		c.logger.Println("error saving refresh token. But users still need to connect, so continuing")
+	}
 
 	successPacket := &packets.Packet{
 		Msg: packets.NewJwt(accessToken, refreshToken),
