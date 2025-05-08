@@ -50,6 +50,13 @@ export function Chat() {
             <Send className="w-5 h-5" />
           </button>
         </div>
+
+        <div>
+          <div className="flex items-center gap-1">
+            <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-400' : 'animate-pulse bg-red-400'}`}></div>
+            <span className="text-white text-xs">{isConnected ? 'Connected' : 'Disconnected'}</span>
+          </div>
+        </div>
       </div>
     </div>
   );
