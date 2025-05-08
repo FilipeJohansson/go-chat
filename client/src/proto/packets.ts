@@ -40,6 +40,10 @@ export interface RegisterRequestMessage {
   password: string;
 }
 
+export interface RefreshRequestMessage {
+  refreshToken: string;
+}
+
 export interface OkResponseMessage {
 }
 
@@ -52,10 +56,6 @@ export interface JwtMessage {
   refreshToken: string;
 }
 
-export interface RefreshMessage {
-  refreshToken: string;
-}
-
 export interface Packet {
   senderId: number;
   chat?: ChatMessage | undefined;
@@ -64,6 +64,7 @@ export interface Packet {
   unregister?: UnregisterMessage | undefined;
   loginRequest?: LoginRequestMessage | undefined;
   registerRequest?: RegisterRequestMessage | undefined;
+  refreshRequest?: RefreshRequestMessage | undefined;
   okResponse?: OkResponseMessage | undefined;
   denyResponse?: DenyResponseMessage | undefined;
   jwt?: JwtMessage | undefined;
@@ -523,6 +524,64 @@ export const RegisterRequestMessage: MessageFns<RegisterRequestMessage> = {
   },
 };
 
+function createBaseRefreshRequestMessage(): RefreshRequestMessage {
+  return { refreshToken: "" };
+}
+
+export const RefreshRequestMessage: MessageFns<RefreshRequestMessage> = {
+  encode(message: RefreshRequestMessage, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.refreshToken !== "") {
+      writer.uint32(10).string(message.refreshToken);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): RefreshRequestMessage {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseRefreshRequestMessage();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.refreshToken = reader.string();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): RefreshRequestMessage {
+    return { refreshToken: isSet(object.refreshToken) ? globalThis.String(object.refreshToken) : "" };
+  },
+
+  toJSON(message: RefreshRequestMessage): unknown {
+    const obj: any = {};
+    if (message.refreshToken !== "") {
+      obj.refreshToken = message.refreshToken;
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<RefreshRequestMessage>, I>>(base?: I): RefreshRequestMessage {
+    return RefreshRequestMessage.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<RefreshRequestMessage>, I>>(object: I): RefreshRequestMessage {
+    const message = createBaseRefreshRequestMessage();
+    message.refreshToken = object.refreshToken ?? "";
+    return message;
+  },
+};
+
 function createBaseOkResponseMessage(): OkResponseMessage {
   return {};
 }
@@ -700,64 +759,6 @@ export const JwtMessage: MessageFns<JwtMessage> = {
   },
 };
 
-function createBaseRefreshMessage(): RefreshMessage {
-  return { refreshToken: "" };
-}
-
-export const RefreshMessage: MessageFns<RefreshMessage> = {
-  encode(message: RefreshMessage, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
-    if (message.refreshToken !== "") {
-      writer.uint32(10).string(message.refreshToken);
-    }
-    return writer;
-  },
-
-  decode(input: BinaryReader | Uint8Array, length?: number): RefreshMessage {
-    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
-    let end = length === undefined ? reader.len : reader.pos + length;
-    const message = createBaseRefreshMessage();
-    while (reader.pos < end) {
-      const tag = reader.uint32();
-      switch (tag >>> 3) {
-        case 1: {
-          if (tag !== 10) {
-            break;
-          }
-
-          message.refreshToken = reader.string();
-          continue;
-        }
-      }
-      if ((tag & 7) === 4 || tag === 0) {
-        break;
-      }
-      reader.skip(tag & 7);
-    }
-    return message;
-  },
-
-  fromJSON(object: any): RefreshMessage {
-    return { refreshToken: isSet(object.refreshToken) ? globalThis.String(object.refreshToken) : "" };
-  },
-
-  toJSON(message: RefreshMessage): unknown {
-    const obj: any = {};
-    if (message.refreshToken !== "") {
-      obj.refreshToken = message.refreshToken;
-    }
-    return obj;
-  },
-
-  create<I extends Exact<DeepPartial<RefreshMessage>, I>>(base?: I): RefreshMessage {
-    return RefreshMessage.fromPartial(base ?? ({} as any));
-  },
-  fromPartial<I extends Exact<DeepPartial<RefreshMessage>, I>>(object: I): RefreshMessage {
-    const message = createBaseRefreshMessage();
-    message.refreshToken = object.refreshToken ?? "";
-    return message;
-  },
-};
-
 function createBasePacket(): Packet {
   return {
     senderId: 0,
@@ -767,6 +768,7 @@ function createBasePacket(): Packet {
     unregister: undefined,
     loginRequest: undefined,
     registerRequest: undefined,
+    refreshRequest: undefined,
     okResponse: undefined,
     denyResponse: undefined,
     jwt: undefined,
@@ -796,14 +798,17 @@ export const Packet: MessageFns<Packet> = {
     if (message.registerRequest !== undefined) {
       RegisterRequestMessage.encode(message.registerRequest, writer.uint32(58).fork()).join();
     }
+    if (message.refreshRequest !== undefined) {
+      RefreshRequestMessage.encode(message.refreshRequest, writer.uint32(66).fork()).join();
+    }
     if (message.okResponse !== undefined) {
-      OkResponseMessage.encode(message.okResponse, writer.uint32(66).fork()).join();
+      OkResponseMessage.encode(message.okResponse, writer.uint32(74).fork()).join();
     }
     if (message.denyResponse !== undefined) {
-      DenyResponseMessage.encode(message.denyResponse, writer.uint32(74).fork()).join();
+      DenyResponseMessage.encode(message.denyResponse, writer.uint32(82).fork()).join();
     }
     if (message.jwt !== undefined) {
-      JwtMessage.encode(message.jwt, writer.uint32(82).fork()).join();
+      JwtMessage.encode(message.jwt, writer.uint32(90).fork()).join();
     }
     return writer;
   },
@@ -876,7 +881,7 @@ export const Packet: MessageFns<Packet> = {
             break;
           }
 
-          message.okResponse = OkResponseMessage.decode(reader, reader.uint32());
+          message.refreshRequest = RefreshRequestMessage.decode(reader, reader.uint32());
           continue;
         }
         case 9: {
@@ -884,11 +889,19 @@ export const Packet: MessageFns<Packet> = {
             break;
           }
 
-          message.denyResponse = DenyResponseMessage.decode(reader, reader.uint32());
+          message.okResponse = OkResponseMessage.decode(reader, reader.uint32());
           continue;
         }
         case 10: {
           if (tag !== 82) {
+            break;
+          }
+
+          message.denyResponse = DenyResponseMessage.decode(reader, reader.uint32());
+          continue;
+        }
+        case 11: {
+          if (tag !== 90) {
             break;
           }
 
@@ -915,6 +928,7 @@ export const Packet: MessageFns<Packet> = {
       registerRequest: isSet(object.registerRequest)
         ? RegisterRequestMessage.fromJSON(object.registerRequest)
         : undefined,
+      refreshRequest: isSet(object.refreshRequest) ? RefreshRequestMessage.fromJSON(object.refreshRequest) : undefined,
       okResponse: isSet(object.okResponse) ? OkResponseMessage.fromJSON(object.okResponse) : undefined,
       denyResponse: isSet(object.denyResponse) ? DenyResponseMessage.fromJSON(object.denyResponse) : undefined,
       jwt: isSet(object.jwt) ? JwtMessage.fromJSON(object.jwt) : undefined,
@@ -943,6 +957,9 @@ export const Packet: MessageFns<Packet> = {
     }
     if (message.registerRequest !== undefined) {
       obj.registerRequest = RegisterRequestMessage.toJSON(message.registerRequest);
+    }
+    if (message.refreshRequest !== undefined) {
+      obj.refreshRequest = RefreshRequestMessage.toJSON(message.refreshRequest);
     }
     if (message.okResponse !== undefined) {
       obj.okResponse = OkResponseMessage.toJSON(message.okResponse);
@@ -977,6 +994,9 @@ export const Packet: MessageFns<Packet> = {
       : undefined;
     message.registerRequest = (object.registerRequest !== undefined && object.registerRequest !== null)
       ? RegisterRequestMessage.fromPartial(object.registerRequest)
+      : undefined;
+    message.refreshRequest = (object.refreshRequest !== undefined && object.refreshRequest !== null)
+      ? RefreshRequestMessage.fromPartial(object.refreshRequest)
       : undefined;
     message.okResponse = (object.okResponse !== undefined && object.okResponse !== null)
       ? OkResponseMessage.fromPartial(object.okResponse)

@@ -90,7 +90,7 @@ FROM refresh_tokens
 WHERE jti = ?
   AND user_id = ?
   AND revoked_at IS NULL
-  AND expired_at > CURRENT_TIMESTAMP
+  AND expire_at > CURRENT_TIMESTAMP
 LIMIT 1
 `
 

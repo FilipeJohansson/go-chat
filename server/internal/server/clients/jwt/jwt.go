@@ -44,7 +44,7 @@ func NewAccessToken(userId string) (accessToken string, accessTokenExpiration *j
 func NewRefreshToken(userId string) (refreshToken string, refreshTokenExpiration *jwt.NumericDate, refreshTokenJti string, e error) {
 	refreshEx := jwt.NewNumericDate(time.Now().Add(168 * time.Hour))
 	refreshJti := ksuid.New().String()
-	claims := AccessToken{
+	claims := RefreshToken{
 		RegisteredClaims: jwt.RegisteredClaims{
 			Subject:   userId,
 			ID:        refreshJti,

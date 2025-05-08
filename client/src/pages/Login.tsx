@@ -33,11 +33,17 @@ export function Login() {
     .then((buffer: ArrayBuffer) => {
       const data: Uint8Array = new Uint8Array(buffer)
       const packet: Packet = Packet.decode(data)
-      const accessToken: string = packet.jwt?.accessToken || ''
-      const refreshToken: string = packet.jwt?.refreshToken || ''
+      const accessToken: string | undefined = packet.jwt?.accessToken
+      const refreshToken: string | undefined = packet.jwt?.refreshToken
+
+      if (!accessToken || !refreshToken) {
+        console.log("error getting access or refresh token")
+        return
+      }
+
       saveTokens({ accessToken, refreshToken })
 
-      navigate("/chat")     
+      navigate("/chat")
     })
     .catch(error => console.error("Erro:", error));
   }

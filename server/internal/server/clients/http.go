@@ -7,15 +7,21 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"regexp"
 	"server/internal/server"
 	"server/internal/server/clients/jwt"
 	"server/internal/server/db"
 	"server/pkg/packets"
 	"strings"
+	"unicode"
 
 	"github.com/segmentio/ksuid"
 	"golang.org/x/crypto/bcrypt"
 	"google.golang.org/protobuf/proto"
+)
+
+var (
+	minPasswordChars = 12
 )
 
 type HttpClient struct {
@@ -52,11 +58,13 @@ func NewHttpClient(hub *server.Hub, writer http.ResponseWriter, request *http.Re
 		c.handleLoginRequest(message, writer)
 	case *packets.Packet_RegisterRequest:
 		c.handleRegisterRequest(message, writer)
+	case *packets.Packet_RefreshRequest:
+		c.handleRefreshRequest(message, writer)
 	default:
 		http.Error(writer, "Message not supported", http.StatusBadRequest)
 	}
 
-	return c, nil
+	return nil, nil
 }
 
 func (c *HttpClient) Initialize(id uint64) {}
@@ -111,6 +119,7 @@ func (c *HttpClient) handleLoginRequest(packet *packets.Packet_LoginRequest, w h
 	if err != nil {
 		c.logger.Printf("Failed to marshal genericFailMessage packet: %v", err)
 		http.Error(w, "An error occured", http.StatusInternalServerError)
+		return
 	}
 
 	user, err := c.dbTx.Queries.GetUserByUsername(c.dbTx.Ctx, username)
@@ -136,33 +145,11 @@ func (c *HttpClient) handleLoginRequest(packet *packets.Packet_LoginRequest, w h
 	}
 
 	// Generate access and refresh tokens
-	accessToken, _, err := jwt.NewAccessToken(user.ID)
+	accessToken, refreshToken, err := generateNewAccessAndRefreshTokensForUser(c, user.ID)
 	if err != nil {
-		c.logger.Printf("error creating access token: %v", err)
+		c.logger.Printf("error generating tokens: %v", err)
 		http.Error(w, "An error occured", http.StatusInternalServerError)
 		return
-	}
-	refreshToken, refreshTokenExpiration, refreshTokenJti, err := jwt.NewRefreshToken(user.ID)
-	if err != nil {
-		c.logger.Printf("error creating refresh token: %v", err)
-		http.Error(w, "An error occured", http.StatusInternalServerError)
-		return
-	}
-
-	// Revoken all open refresh tokens for that user before save the new one
-	_, err = c.dbTx.Queries.RevokeTokensForUser(c.dbTx.Ctx, user.ID)
-	if err != nil {
-		c.logger.Printf("error revoking tokens for user. But users still need to connect, so continuing")
-	}
-
-	// Save refresh token on DB
-	err = c.dbTx.Queries.SaveRefreshToken(c.dbTx.Ctx, db.SaveRefreshTokenParams{
-		Jti:      refreshTokenJti,
-		UserID:   user.ID,
-		ExpireAt: refreshTokenExpiration.Time,
-	})
-	if err != nil {
-		c.logger.Println("error saving refresh token. But users still need to connect, so continuing")
 	}
 
 	successPacket := &packets.Packet{
@@ -199,6 +186,7 @@ func (c *HttpClient) handleRegisterRequest(message *packets.Packet_RegisterReque
 		}
 		w.WriteHeader(http.StatusOK)
 		w.Write(data)
+		return
 	}
 
 	err = validatePassword(password)
@@ -216,6 +204,7 @@ func (c *HttpClient) handleRegisterRequest(message *packets.Packet_RegisterReque
 		}
 		w.WriteHeader(http.StatusOK)
 		w.Write(data)
+		return
 	}
 
 	if _, err := c.dbTx.Queries.GetUserByUsername(c.dbTx.Ctx, username); err == nil {
@@ -243,6 +232,7 @@ func (c *HttpClient) handleRegisterRequest(message *packets.Packet_RegisterReque
 	if err != nil {
 		c.logger.Printf("Failed to marshal genericFailMessage packet: %v", err)
 		http.Error(w, "An error occured", http.StatusInternalServerError)
+		return
 	}
 
 	passwordHash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
@@ -274,6 +264,67 @@ func (c *HttpClient) handleRegisterRequest(message *packets.Packet_RegisterReque
 	w.Write(successData)
 }
 
+func (c *HttpClient) handleRefreshRequest(message *packets.Packet_RefreshRequest, w http.ResponseWriter) {
+	token := message.RefreshRequest.GetRefreshToken()
+	if token == "" {
+		reason := "token not provided"
+		c.logger.Println(reason)
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	refreshToken, err := jwt.Validate(token, &jwt.RefreshToken{})
+	switch {
+	case err != nil:
+		reason := fmt.Sprintf("error validating token: %v", err)
+		c.logger.Println(reason)
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	case refreshToken.Type != "refresh":
+		reason := "token is not refresh token"
+		c.logger.Println(reason)
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	jti := refreshToken.ID
+	userId := refreshToken.Subject
+	_, err = c.dbTx.Queries.IsRefreshTokenValid(c.dbTx.Ctx, db.IsRefreshTokenValidParams{
+		Jti:    jti,
+		UserID: userId,
+	})
+	if err != nil {
+		reason := fmt.Sprintf("token revoked or expired: %v", err)
+		c.logger.Println(reason)
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	c.logger.Println("RefreshToken valid, proceeding")
+
+	// Generate access and refresh tokens
+	newAccessToken, newRefreshToken, err := generateNewAccessAndRefreshTokensForUser(c, userId)
+	if err != nil {
+		c.logger.Printf("error generating tokens: %v", err)
+		http.Error(w, "An error occured", http.StatusInternalServerError)
+		return
+	}
+
+	successPacket := &packets.Packet{
+		Msg: packets.NewJwt(newAccessToken, newRefreshToken),
+	}
+	successData, err := proto.Marshal(successPacket)
+	if err != nil {
+		c.logger.Printf("Failed to marshal success packet: %v", err)
+		http.Error(w, "An error occured", http.StatusInternalServerError)
+		return
+	}
+
+	c.logger.Printf("Refresh successfull for user id %v", userId)
+	w.WriteHeader(http.StatusOK)
+	w.Write(successData)
+}
+
 func validateUsername(username string) error {
 	if len(username) <= 0 {
 		return errors.New("empty")
@@ -288,7 +339,29 @@ func validateUsername(username string) error {
 }
 
 func validatePassword(password string) error {
-	//! validate if password not weak
+	if len(password) < minPasswordChars {
+		return errors.New("lenght less than minimum")
+	}
+	if !regexp.MustCompile(`[0-9]`).MatchString(password) {
+		return errors.New("don't have number")
+	}
+	if password != strings.TrimSpace(password) {
+		return errors.New("leading or trailing whitespace")
+	}
+
+	hasUppercase := func(password string) bool {
+		for _, r := range password {
+			if unicode.IsUpper(r) {
+				return true
+			}
+		}
+		return false
+	}(password)
+
+	if !hasUppercase {
+		return errors.New("don't have uppercase")
+	}
+
 	return nil
 }
 
@@ -298,4 +371,35 @@ func addNewUser(dbTx *server.DbTx, username string, passwordHash string) (db.Use
 		Username:     username,
 		PasswordHash: passwordHash,
 	})
+}
+
+func generateNewAccessAndRefreshTokensForUser(c *HttpClient, userId string) (string, string, error) {
+	accessToken, _, err := jwt.NewAccessToken(userId)
+	if err != nil {
+		reason := fmt.Sprintf("error creating access token: %v", err)
+		return "", "", errors.New(reason)
+	}
+	refreshToken, refreshTokenExpiration, refreshTokenJti, err := jwt.NewRefreshToken(userId)
+	if err != nil {
+		reason := fmt.Sprintf("error creating refresh token: %v", err)
+		return "", "", errors.New(reason)
+	}
+
+	// Revoken all open refresh tokens for that user before save the new one
+	_, err = c.dbTx.Queries.RevokeTokensForUser(c.dbTx.Ctx, userId)
+	if err != nil {
+		c.logger.Println("error revoking tokens for user. But users still need to connect, so continuing")
+	}
+
+	// Save refresh token on DB
+	err = c.dbTx.Queries.SaveRefreshToken(c.dbTx.Ctx, db.SaveRefreshTokenParams{
+		Jti:      refreshTokenJti,
+		UserID:   userId,
+		ExpireAt: refreshTokenExpiration.Time,
+	})
+	if err != nil {
+		c.logger.Println("error saving refresh token. But users still need to connect, so continuing")
+	}
+
+	return accessToken, refreshToken, nil
 }

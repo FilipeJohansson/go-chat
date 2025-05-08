@@ -110,7 +110,7 @@ type Hub struct {
 }
 
 func NewHub() *Hub {
-	dbPool, err := sql.Open("sqlite", "db.sqlite")
+	dbPool, err := sql.Open("sqlite", "db.sqlite?_journal_mode=WAL&_busy_timeout=5000")
 	if err != nil {
 		log.Fatalf("Error opening database: %v", err)
 	}
@@ -159,6 +159,10 @@ func (h *Hub) Serve(
 	client, err := getNewClient(h, writer, request)
 	if err != nil {
 		log.Printf("Error obtaining client for new connection: %v\n", err)
+		return
+	}
+
+	if client == nil {
 		return
 	}
 

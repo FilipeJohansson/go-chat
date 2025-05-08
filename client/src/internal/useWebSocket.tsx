@@ -35,7 +35,7 @@ export function useWebSocket() {
       setIsConnected(false)
       console.log("Disconnected from WebSocket server")
 
-      //? Automatic reconnection
+      navigate("/refresh")
     }
 
     const onPacketReceived = (packet: Packet) => {
