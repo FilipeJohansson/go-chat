@@ -1,11 +1,13 @@
 syntax = "proto3";
 
+import "google/protobuf/timestamp.proto";
+
 package packets;
 option go_package = "pkg/packets";
 
-message ChatMessage { string msg = 1; }
-message IdMessage { uint64 id = 1; }
-message RegisterMessage { uint64 id = 1; }
+message ChatMessage { google.protobuf.Timestamp timestamp = 1; string senderUsername = 2; string msg = 3; }
+message IdMessage { uint64 id = 1; string username = 2; }
+message RegisterMessage { uint64 id = 1; string username = 2; }
 message UnregisterMessage { uint64 id = 1; }
 message LoginRequestMessage { string username = 1; string password = 2; }
 message RegisterRequestMessage { string username = 1; string password = 2; }

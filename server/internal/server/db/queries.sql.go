@@ -70,6 +70,20 @@ func (q *Queries) GetUserByUsername(ctx context.Context, lower string) (User, er
 	return i, err
 }
 
+const getUsernameById = `-- name: GetUsernameById :one
+SELECT username
+FROM users
+WHERE id = ?
+LIMIT 1
+`
+
+func (q *Queries) GetUsernameById(ctx context.Context, id string) (string, error) {
+	row := q.db.QueryRowContext(ctx, getUsernameById, id)
+	var username string
+	err := row.Scan(&username)
+	return username, err
+}
+
 const isRefreshTokenValid = `-- name: IsRefreshTokenValid :one
 SELECT 1
 FROM refresh_tokens

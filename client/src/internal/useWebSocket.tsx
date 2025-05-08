@@ -1,6 +1,8 @@
-import { useEffect, useState } from "react"
-import { ChatMessage, IdMessage, Packet } from "../proto/packets"
-import { WebSocketClient } from "./websocket"
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router";
+import { ChatMessage, IdMessage, Packet } from "../proto/packets";
+import { Tokens, clearTokens, getTokens } from "./tokens";
+import { WebSocketClient } from "./websocket";
 
 export interface User {
   id: number,
@@ -8,19 +10,21 @@ export interface User {
 }
 
 export interface Message {
-  timestamp: number,
+  timestamp: Date,
   user: User,
   message: string,
 }
 
 export function useWebSocket() {
+  const navigate = useNavigate();
+
   const [isConnected, setIsConnected] = useState(false)
   const [messages, setMessages] = useState<Message[]>([])
   const [connectedUser, setConnectedUser] = useState<User | undefined>(undefined)
   const [usersOnline, setUsersOnline] = useState<User[]>([])
 
   useEffect(() => {
-    const client = WebSocketClient.getInstance()
+    const client: WebSocketClient = WebSocketClient.getInstance()
 
     const onConnected = () => {
       setIsConnected(true)
@@ -36,10 +40,9 @@ export function useWebSocket() {
 
     const onPacketReceived = (packet: Packet) => {
       console.log("Packet received", packet)
-      const senderId = packet.senderId
       if (packet.id) handleIdMsg(packet.id)
-      else if (packet.chat) handleChatMessage(senderId, packet.chat)
-      else if (packet.register) handleRegisterMessage(packet.register.id)
+      else if (packet.chat) handleChatMessage({ id: packet.senderId, name: packet.chat.senderUsername }, packet.chat)
+      else if (packet.register) handleRegisterMessage({ id: packet.register.id, name: packet.register.username })
       else if (packet.unregister) handleUnregisterMessage(packet.unregister.id)
     }
 
@@ -49,7 +52,15 @@ export function useWebSocket() {
       onPacket: onPacketReceived,
     })
 
-    const accessToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyd21MWEljOFNQR0swSnJUakVMT29oR1RQelYiLCJleHAiOjE3NDY2NDk1OTQsInR5cGUiOiJhY2Nlc3MifQ.361tr16FSnDxaqQ4UIhBlnHdzEf4X4j5U8-TS63wTfs"
+    const tokens: Tokens | undefined = getTokens()
+    if (!tokens) {
+      clearTokens()
+      navigate("/login")
+      console.log("Unable to find tokens to connect")
+      return
+    }
+
+    const accessToken: string = tokens.accessToken
     client.connect(`ws://localhost:8080/ws?token=${accessToken}`)
 
     return () => {
@@ -58,24 +69,26 @@ export function useWebSocket() {
   }, [])
 
   useEffect(() => {
-    if (connectedUser) handleRegisterMessage(connectedUser.id)
+    if (connectedUser) handleRegisterMessage(connectedUser)
   }, [connectedUser])
 
   const handleIdMsg = (idMsg: IdMessage) => {
-    const clientId = idMsg.id
-    setConnectedUser({ id: clientId, name: `Client ${clientId}`})
+    const clientId: number = idMsg.id
+    const username: string = idMsg.username
+    setConnectedUser({ id: clientId, name: username})
   }
 
-  const handleChatMessage = (senderId: number, message: ChatMessage) => {
-    addMessage(senderId, message.msg)
+  const handleChatMessage = (user: User, msg: ChatMessage) => {
+    const message: Message = { timestamp: msg.timestamp || new Date(), user, message: msg.msg }
+    addMessage(message)
   }
 
-  const handleRegisterMessage = (id: number) => {
-    const newUser: User = { id, name: `Client ${id}` }
+  const handleRegisterMessage = (user: User) => {
+    const newUser: User = user
     setUsersOnline((prev) => {
-      const merged = [...prev, newUser]
+      const merged: User[] = [...prev, newUser]
 
-      const unique = Array.from(
+      const unique: User[] = Array.from(
         new Map(merged.map(user => [user.id, user])).values()
       )
 
@@ -93,22 +106,24 @@ export function useWebSocket() {
     ].filter((user: User) => user.id !== unregisterId))
   }
 
-  const addMessage = (senderId: number, message: string) => {
+  const addMessage = (message: Message) => {
     setMessages((prevMessages) => [
       ...prevMessages,
-      { timestamp: Date.now(), user: { id: senderId, name: `Client ${senderId}` }, message },
+      message
     ])
   }
 
   const sendMessage = (message: string) => {
-    const msg = message.trim()
+    const msg: string = message.trim()
     if (!msg) return
-    const senderId = connectedUser!.id
-    const chatMessage = { msg }
-    const packet = Packet.create({ senderId: senderId, chat: chatMessage })
+    const senderId: number = connectedUser!.id
+    const senderUsername: string = connectedUser!.name
+    const timestamp: Date = new Date()
+    const chatMessage: ChatMessage = { timestamp, senderUsername, msg }
+    const packet: Packet = Packet.create({ senderId, chat: chatMessage })
     WebSocketClient.getInstance().send(packet)
 
-    addMessage(senderId, msg) // Add a copy of the message on our own side
+    addMessage({ timestamp, user: connectedUser!, message }) // Add a copy of the message on our own side
   }
 
   return {

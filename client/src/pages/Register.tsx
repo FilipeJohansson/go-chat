@@ -1,4 +1,51 @@
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router";
+import { getTokens } from "../internal/tokens";
+import { Packet, RegisterRequestMessage } from "../proto/packets";
+
 export function Register() {
+  const navigate = useNavigate();
+
+  const [username, setUsername] = useState<string>('')
+  const [password, setPassword] = useState<string>('')
+  const [repeatedPassword, setRepeatedPassword] = useState<string>('')
+
+  useEffect(() => {
+    if (getTokens()) navigate("/chat")
+  }, [])
+
+  const handleRegister = (): void => {
+    if (password !== repeatedPassword) {
+      console.log("The passwords must be identical")
+      return
+    }
+
+    //! validate username and password min reqs
+
+    const registerReq: RegisterRequestMessage = RegisterRequestMessage.create({ username, password })
+    const packet: Packet = Packet.create({ registerRequest: registerReq })
+    sendRegisterPacket(packet)
+  }
+
+  const sendRegisterPacket = (packet: Packet): void => {
+    const binary: Uint8Array = Packet.encode(packet).finish()
+    fetch("http://localhost:8080/login", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/octet-stream"
+      },
+      body: binary,
+      mode: "cors"
+    })
+    .then((response: Response): Promise<ArrayBuffer> => response.arrayBuffer())
+    .then((buffer: ArrayBuffer): void => {
+      const data = new Uint8Array(buffer)
+      const packet = Packet.decode(data)
+      console.log("Server Response:", packet)
+    })
+    .catch(error => console.error("Erro:", error));
+  }
+
   return (
     <div className="w-screen h-screen bg-[url(/src/assets/background.png)] flex items-center justify-center bg-no-repeat bg-cover bg-center">
       <div className="w-[400px] h-[400px] flex flex-col items-center justify-between p-4 gap-4 bg-white rounded-md">
@@ -13,6 +60,8 @@ export function Register() {
               className="p-1 border-b border-b-2 focus:outline-pink-500"
               type="text"
               placeholder="Type your username"
+              value={username}
+              onChange={e => setUsername(e.target.value)}
             />
           </div>
 
@@ -22,6 +71,8 @@ export function Register() {
               className="p-1 border-b border-b-2 focus:outline-pink-500"
               type="password"
               placeholder="Type your password"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
             />
           </div>
           <div className="w-full flex flex-col gap-1">
@@ -30,11 +81,16 @@ export function Register() {
               className="p-1 border-b border-b-2 focus:outline-pink-500"
               type="password"
               placeholder="Repeat your password"
+              value={repeatedPassword}
+              onChange={e => setRepeatedPassword(e.target.value)}
             />
           </div>
         </div>
 
-        <button className="w-full h-10 bg-blue-500 rounded-xl hover:bg-pink-500 transition">
+        <button
+          className="w-full h-10 bg-blue-500 rounded-xl hover:bg-pink-500 transition"
+          onClick={handleRegister}
+        >
           <span className="text-white font-semibold">REGISTER</span>
         </button>
       </div>

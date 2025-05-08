@@ -9,6 +9,7 @@ package packets
 import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
@@ -22,10 +23,12 @@ const (
 )
 
 type ChatMessage struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Msg           string                 `protobuf:"bytes,1,opt,name=msg,proto3" json:"msg,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	Timestamp      *timestamppb.Timestamp `protobuf:"bytes,1,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
+	SenderUsername string                 `protobuf:"bytes,2,opt,name=senderUsername,proto3" json:"senderUsername,omitempty"`
+	Msg            string                 `protobuf:"bytes,3,opt,name=msg,proto3" json:"msg,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *ChatMessage) Reset() {
@@ -58,6 +61,20 @@ func (*ChatMessage) Descriptor() ([]byte, []int) {
 	return file_packets_proto_rawDescGZIP(), []int{0}
 }
 
+func (x *ChatMessage) GetTimestamp() *timestamppb.Timestamp {
+	if x != nil {
+		return x.Timestamp
+	}
+	return nil
+}
+
+func (x *ChatMessage) GetSenderUsername() string {
+	if x != nil {
+		return x.SenderUsername
+	}
+	return ""
+}
+
 func (x *ChatMessage) GetMsg() string {
 	if x != nil {
 		return x.Msg
@@ -68,6 +85,7 @@ func (x *ChatMessage) GetMsg() string {
 type IdMessage struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            uint64                 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	Username      string                 `protobuf:"bytes,2,opt,name=username,proto3" json:"username,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -109,9 +127,17 @@ func (x *IdMessage) GetId() uint64 {
 	return 0
 }
 
+func (x *IdMessage) GetUsername() string {
+	if x != nil {
+		return x.Username
+	}
+	return ""
+}
+
 type RegisterMessage struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            uint64                 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	Username      string                 `protobuf:"bytes,2,opt,name=username,proto3" json:"username,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -151,6 +177,13 @@ func (x *RegisterMessage) GetId() uint64 {
 		return x.Id
 	}
 	return 0
+}
+
+func (x *RegisterMessage) GetUsername() string {
+	if x != nil {
+		return x.Username
+	}
+	return ""
 }
 
 type UnregisterMessage struct {
@@ -683,13 +716,17 @@ var File_packets_proto protoreflect.FileDescriptor
 
 const file_packets_proto_rawDesc = "" +
 	"\n" +
-	"\rpackets.proto\x12\apackets\"\x1f\n" +
-	"\vChatMessage\x12\x10\n" +
-	"\x03msg\x18\x01 \x01(\tR\x03msg\"\x1b\n" +
+	"\rpackets.proto\x12\apackets\x1a\x1fgoogle/protobuf/timestamp.proto\"\x81\x01\n" +
+	"\vChatMessage\x128\n" +
+	"\ttimestamp\x18\x01 \x01(\v2\x1a.google.protobuf.TimestampR\ttimestamp\x12&\n" +
+	"\x0esenderUsername\x18\x02 \x01(\tR\x0esenderUsername\x12\x10\n" +
+	"\x03msg\x18\x03 \x01(\tR\x03msg\"7\n" +
 	"\tIdMessage\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\x04R\x02id\"!\n" +
+	"\x02id\x18\x01 \x01(\x04R\x02id\x12\x1a\n" +
+	"\busername\x18\x02 \x01(\tR\busername\"=\n" +
 	"\x0fRegisterMessage\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\x04R\x02id\"#\n" +
+	"\x02id\x18\x01 \x01(\x04R\x02id\x12\x1a\n" +
+	"\busername\x18\x02 \x01(\tR\busername\"#\n" +
 	"\x11UnregisterMessage\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\"M\n" +
 	"\x13LoginRequestMessage\x12\x1a\n" +
@@ -749,22 +786,24 @@ var file_packets_proto_goTypes = []any{
 	(*JwtMessage)(nil),             // 8: packets.JwtMessage
 	(*RefreshMessage)(nil),         // 9: packets.RefreshMessage
 	(*Packet)(nil),                 // 10: packets.Packet
+	(*timestamppb.Timestamp)(nil),  // 11: google.protobuf.Timestamp
 }
 var file_packets_proto_depIdxs = []int32{
-	0, // 0: packets.Packet.chat:type_name -> packets.ChatMessage
-	1, // 1: packets.Packet.id:type_name -> packets.IdMessage
-	2, // 2: packets.Packet.register:type_name -> packets.RegisterMessage
-	3, // 3: packets.Packet.unregister:type_name -> packets.UnregisterMessage
-	4, // 4: packets.Packet.login_request:type_name -> packets.LoginRequestMessage
-	5, // 5: packets.Packet.register_request:type_name -> packets.RegisterRequestMessage
-	6, // 6: packets.Packet.ok_response:type_name -> packets.OkResponseMessage
-	7, // 7: packets.Packet.deny_response:type_name -> packets.DenyResponseMessage
-	8, // 8: packets.Packet.jwt:type_name -> packets.JwtMessage
-	9, // [9:9] is the sub-list for method output_type
-	9, // [9:9] is the sub-list for method input_type
-	9, // [9:9] is the sub-list for extension type_name
-	9, // [9:9] is the sub-list for extension extendee
-	0, // [0:9] is the sub-list for field type_name
+	11, // 0: packets.ChatMessage.timestamp:type_name -> google.protobuf.Timestamp
+	0,  // 1: packets.Packet.chat:type_name -> packets.ChatMessage
+	1,  // 2: packets.Packet.id:type_name -> packets.IdMessage
+	2,  // 3: packets.Packet.register:type_name -> packets.RegisterMessage
+	3,  // 4: packets.Packet.unregister:type_name -> packets.UnregisterMessage
+	4,  // 5: packets.Packet.login_request:type_name -> packets.LoginRequestMessage
+	5,  // 6: packets.Packet.register_request:type_name -> packets.RegisterRequestMessage
+	6,  // 7: packets.Packet.ok_response:type_name -> packets.OkResponseMessage
+	7,  // 8: packets.Packet.deny_response:type_name -> packets.DenyResponseMessage
+	8,  // 9: packets.Packet.jwt:type_name -> packets.JwtMessage
+	10, // [10:10] is the sub-list for method output_type
+	10, // [10:10] is the sub-list for method input_type
+	10, // [10:10] is the sub-list for extension type_name
+	10, // [10:10] is the sub-list for extension extendee
+	0,  // [0:10] is the sub-list for field type_name
 }
 
 func init() { file_packets_proto_init() }

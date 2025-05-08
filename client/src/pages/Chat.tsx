@@ -24,7 +24,7 @@ export function Chat() {
           {/* Messages */}
           <Painel className="col-span-3 flex flex-col overflow-y-auto overflow-x-hidden">
             {messages.map((m: Message) => (
-              <UserMessage key={`${m.user.id}_${m.timestamp}`} message={m} isConnectedUser={connectedUser?.id === m.user.id} />
+              <UserMessage key={`${m.user.id}_${m.timestamp.getTime()}`} message={m} isConnectedUser={connectedUser?.id === m.user.id} />
             ))}
           </Painel>
 

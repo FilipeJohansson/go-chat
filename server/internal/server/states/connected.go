@@ -29,7 +29,7 @@ func (c *Connected) SetClient(client server.ClientInterfacer) {
 }
 
 func (c *Connected) OnEnter() {
-	c.client.SocketSend(packets.NewId(c.client.Id()))
+	c.client.SocketSend(packets.NewId(c.client.Id(), c.client.Username()))
 }
 
 func (c *Connected) HandleMessage(senderId uint64, message packets.Msg) {

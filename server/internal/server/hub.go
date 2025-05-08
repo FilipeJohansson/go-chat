@@ -51,6 +51,7 @@ type ClientInterfacer interface {
 	Initialize(id uint64)
 
 	Id() uint64
+	Username() string
 	ProcessMessage(senderId uint64, message packets.Msg)
 
 	SetState(state ClientStateHandler)
@@ -81,9 +82,10 @@ type ClientInterfacer interface {
 }
 
 type StoragedMessage struct {
-	Timestamp time.Time
-	Msg       *packets.Packet_Chat
-	SenderId  uint64
+	Timestamp      time.Time
+	Msg            *packets.Packet_Chat
+	SenderId       uint64
+	SenderUsername string
 }
 
 // The hub is the central point of communication between all connected clients

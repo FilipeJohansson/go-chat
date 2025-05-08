@@ -1,9 +1,3 @@
--- name: GetUserByUsername :one
-SELECT *
-FROM users
-WHERE LOWER(username) = LOWER(?)
-LIMIT 1;
-
 -- name: CreateUser :one
 INSERT INTO users (
   id, username, password_hash
@@ -11,6 +5,18 @@ INSERT INTO users (
   ?, ?, ?
 )
 RETURNING *;
+
+-- name: GetUserByUsername :one
+SELECT *
+FROM users
+WHERE LOWER(username) = LOWER(?)
+LIMIT 1;
+
+-- name: GetUsernameById :one
+SELECT username
+FROM users
+WHERE id = ?
+LIMIT 1;
 
 -- name: SaveRefreshToken :exec
 INSERT INTO refresh_tokens (

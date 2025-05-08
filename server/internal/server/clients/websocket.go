@@ -24,6 +24,7 @@ var (
 type WebSocketClient struct {
 	id       uint64
 	userId   string
+	username string
 	conn     *websocket.Conn
 	hub      *server.Hub
 	sendChan chan *packets.Packet // To send messages from server to client. WritePump consumes it
@@ -61,13 +62,20 @@ func NewWebSocketClient(hub *server.Hub, writer http.ResponseWriter, request *ht
 	}
 
 	c := &WebSocketClient{
-		userId:   accessToken.ID,
+		userId:   accessToken.Subject,
 		hub:      hub,
 		conn:     conn,
 		sendChan: make(chan *packets.Packet, 256),
 		logger:   log.New(log.Writer(), "Client unknown: ", log.LstdFlags),
 		dbTx:     hub.NewDbTx(),
 	}
+
+	username, err := c.dbTx.Queries.GetUsernameById(c.dbTx.Ctx, c.userId)
+	if err != nil {
+		username = fmt.Sprintf("Client %v", c.id)
+		c.logger.Printf("Error getting username: %v", err)
+	}
+	c.username = username
 
 	return c, nil
 }
@@ -81,13 +89,13 @@ func (c *WebSocketClient) Initialize(id uint64) {
 	//! Check if has another client with the same userID connected. If yes, drop it
 
 	c.logger.Printf("Broadcasting new client connected")
-	c.Broadcast(packets.NewRegister(c.id))
+	c.Broadcast(packets.NewRegister(c.id, c.username))
 
 	c.logger.Printf("Fowarding already connected users to client")
 	c.hub.Clients.ForEach(func(clientId uint64, client server.ClientInterfacer) {
 		if clientId != c.Id() {
 			// Already connected client (client) is forwarding their register to the newer client (c)
-			client.PassToPeer(packets.NewRegister(clientId), c.Id())
+			client.PassToPeer(packets.NewRegister(clientId, client.Username()), c.Id())
 		}
 	})
 
@@ -99,6 +107,10 @@ func (c *WebSocketClient) Initialize(id uint64) {
 
 func (c *WebSocketClient) Id() uint64 {
 	return c.id
+}
+
+func (c *WebSocketClient) Username() string {
+	return c.username
 }
 
 func (c *WebSocketClient) SetState(state server.ClientStateHandler) {
@@ -190,9 +202,10 @@ func (c *WebSocketClient) ReadPump() {
 
 		if msg, ok := packet.Msg.(*packets.Packet_Chat); ok {
 			c.hub.LastMessages.Add(server.StoragedMessage{
-				Timestamp: time.Now(),
-				Msg:       msg,
-				SenderId:  packet.SenderId,
+				Timestamp:      time.Now(),
+				Msg:            msg,
+				SenderUsername: c.username,
+				SenderId:       packet.SenderId,
 			})
 		}
 
@@ -279,6 +292,8 @@ func checkOrigin(r *http.Request) bool {
 
 	switch origin {
 	case "http://localhost:5173":
+		return true
+	case "http://localhost:5174":
 		return true
 	default:
 		return false

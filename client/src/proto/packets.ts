@@ -6,19 +6,24 @@
 
 /* eslint-disable */
 import { BinaryReader, BinaryWriter } from "@bufbuild/protobuf/wire";
+import { Timestamp } from "./google/protobuf/timestamp";
 
 export const protobufPackage = "packets";
 
 export interface ChatMessage {
+  timestamp: Date | undefined;
+  senderUsername: string;
   msg: string;
 }
 
 export interface IdMessage {
   id: number;
+  username: string;
 }
 
 export interface RegisterMessage {
   id: number;
+  username: string;
 }
 
 export interface UnregisterMessage {
@@ -65,13 +70,19 @@ export interface Packet {
 }
 
 function createBaseChatMessage(): ChatMessage {
-  return { msg: "" };
+  return { timestamp: undefined, senderUsername: "", msg: "" };
 }
 
 export const ChatMessage: MessageFns<ChatMessage> = {
   encode(message: ChatMessage, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.timestamp !== undefined) {
+      Timestamp.encode(toTimestamp(message.timestamp), writer.uint32(10).fork()).join();
+    }
+    if (message.senderUsername !== "") {
+      writer.uint32(18).string(message.senderUsername);
+    }
     if (message.msg !== "") {
-      writer.uint32(10).string(message.msg);
+      writer.uint32(26).string(message.msg);
     }
     return writer;
   },
@@ -88,6 +99,22 @@ export const ChatMessage: MessageFns<ChatMessage> = {
             break;
           }
 
+          message.timestamp = fromTimestamp(Timestamp.decode(reader, reader.uint32()));
+          continue;
+        }
+        case 2: {
+          if (tag !== 18) {
+            break;
+          }
+
+          message.senderUsername = reader.string();
+          continue;
+        }
+        case 3: {
+          if (tag !== 26) {
+            break;
+          }
+
           message.msg = reader.string();
           continue;
         }
@@ -101,11 +128,21 @@ export const ChatMessage: MessageFns<ChatMessage> = {
   },
 
   fromJSON(object: any): ChatMessage {
-    return { msg: isSet(object.msg) ? globalThis.String(object.msg) : "" };
+    return {
+      timestamp: isSet(object.timestamp) ? fromJsonTimestamp(object.timestamp) : undefined,
+      senderUsername: isSet(object.senderUsername) ? globalThis.String(object.senderUsername) : "",
+      msg: isSet(object.msg) ? globalThis.String(object.msg) : "",
+    };
   },
 
   toJSON(message: ChatMessage): unknown {
     const obj: any = {};
+    if (message.timestamp !== undefined) {
+      obj.timestamp = message.timestamp.toISOString();
+    }
+    if (message.senderUsername !== "") {
+      obj.senderUsername = message.senderUsername;
+    }
     if (message.msg !== "") {
       obj.msg = message.msg;
     }
@@ -117,19 +154,24 @@ export const ChatMessage: MessageFns<ChatMessage> = {
   },
   fromPartial<I extends Exact<DeepPartial<ChatMessage>, I>>(object: I): ChatMessage {
     const message = createBaseChatMessage();
+    message.timestamp = object.timestamp ?? undefined;
+    message.senderUsername = object.senderUsername ?? "";
     message.msg = object.msg ?? "";
     return message;
   },
 };
 
 function createBaseIdMessage(): IdMessage {
-  return { id: 0 };
+  return { id: 0, username: "" };
 }
 
 export const IdMessage: MessageFns<IdMessage> = {
   encode(message: IdMessage, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
     if (message.id !== 0) {
       writer.uint32(8).uint64(message.id);
+    }
+    if (message.username !== "") {
+      writer.uint32(18).string(message.username);
     }
     return writer;
   },
@@ -149,6 +191,14 @@ export const IdMessage: MessageFns<IdMessage> = {
           message.id = longToNumber(reader.uint64());
           continue;
         }
+        case 2: {
+          if (tag !== 18) {
+            break;
+          }
+
+          message.username = reader.string();
+          continue;
+        }
       }
       if ((tag & 7) === 4 || tag === 0) {
         break;
@@ -159,13 +209,19 @@ export const IdMessage: MessageFns<IdMessage> = {
   },
 
   fromJSON(object: any): IdMessage {
-    return { id: isSet(object.id) ? globalThis.Number(object.id) : 0 };
+    return {
+      id: isSet(object.id) ? globalThis.Number(object.id) : 0,
+      username: isSet(object.username) ? globalThis.String(object.username) : "",
+    };
   },
 
   toJSON(message: IdMessage): unknown {
     const obj: any = {};
     if (message.id !== 0) {
       obj.id = Math.round(message.id);
+    }
+    if (message.username !== "") {
+      obj.username = message.username;
     }
     return obj;
   },
@@ -176,18 +232,22 @@ export const IdMessage: MessageFns<IdMessage> = {
   fromPartial<I extends Exact<DeepPartial<IdMessage>, I>>(object: I): IdMessage {
     const message = createBaseIdMessage();
     message.id = object.id ?? 0;
+    message.username = object.username ?? "";
     return message;
   },
 };
 
 function createBaseRegisterMessage(): RegisterMessage {
-  return { id: 0 };
+  return { id: 0, username: "" };
 }
 
 export const RegisterMessage: MessageFns<RegisterMessage> = {
   encode(message: RegisterMessage, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
     if (message.id !== 0) {
       writer.uint32(8).uint64(message.id);
+    }
+    if (message.username !== "") {
+      writer.uint32(18).string(message.username);
     }
     return writer;
   },
@@ -207,6 +267,14 @@ export const RegisterMessage: MessageFns<RegisterMessage> = {
           message.id = longToNumber(reader.uint64());
           continue;
         }
+        case 2: {
+          if (tag !== 18) {
+            break;
+          }
+
+          message.username = reader.string();
+          continue;
+        }
       }
       if ((tag & 7) === 4 || tag === 0) {
         break;
@@ -217,13 +285,19 @@ export const RegisterMessage: MessageFns<RegisterMessage> = {
   },
 
   fromJSON(object: any): RegisterMessage {
-    return { id: isSet(object.id) ? globalThis.Number(object.id) : 0 };
+    return {
+      id: isSet(object.id) ? globalThis.Number(object.id) : 0,
+      username: isSet(object.username) ? globalThis.String(object.username) : "",
+    };
   },
 
   toJSON(message: RegisterMessage): unknown {
     const obj: any = {};
     if (message.id !== 0) {
       obj.id = Math.round(message.id);
+    }
+    if (message.username !== "") {
+      obj.username = message.username;
     }
     return obj;
   },
@@ -234,6 +308,7 @@ export const RegisterMessage: MessageFns<RegisterMessage> = {
   fromPartial<I extends Exact<DeepPartial<RegisterMessage>, I>>(object: I): RegisterMessage {
     const message = createBaseRegisterMessage();
     message.id = object.id ?? 0;
+    message.username = object.username ?? "";
     return message;
   },
 };
@@ -925,6 +1000,28 @@ export type DeepPartial<T> = T extends Builtin ? T
 type KeysOfUnion<T> = T extends T ? keyof T : never;
 export type Exact<P, I extends P> = P extends Builtin ? P
   : P & { [K in keyof P]: Exact<P[K], I[K]> } & { [K in Exclude<keyof I, KeysOfUnion<P>>]: never };
+
+function toTimestamp(date: Date): Timestamp {
+  const seconds = Math.trunc(date.getTime() / 1_000);
+  const nanos = (date.getTime() % 1_000) * 1_000_000;
+  return { seconds, nanos };
+}
+
+function fromTimestamp(t: Timestamp): Date {
+  let millis = (t.seconds || 0) * 1_000;
+  millis += (t.nanos || 0) / 1_000_000;
+  return new globalThis.Date(millis);
+}
+
+function fromJsonTimestamp(o: any): Date {
+  if (o instanceof globalThis.Date) {
+    return o;
+  } else if (typeof o === "string") {
+    return new globalThis.Date(o);
+  } else {
+    return fromTimestamp(Timestamp.fromJSON(o));
+  }
+}
 
 function longToNumber(int64: { toString(): string }): number {
   const num = globalThis.Number(int64.toString());
