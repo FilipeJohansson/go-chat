@@ -42,12 +42,19 @@ func NewWebSocketClient(hub *server.Hub, writer http.ResponseWriter, request *ht
 	}
 
 	accessToken, err := jwt.Validate(token, &jwt.AccessToken{})
-	if err != nil {
+	switch {
+	case err != nil:
 		reason := fmt.Sprintf("error validating token: %v", err)
 		log.Println(reason)
 		writer.WriteHeader(http.StatusUnauthorized)
 		return nil, errors.New(reason)
+	case accessToken.Type != "access":
+		reason := "token is not access token"
+		log.Println(reason)
+		writer.WriteHeader(http.StatusUnauthorized)
+		return nil, errors.New(reason)
 	}
+
 	log.Println("AccessToken valid, upgrading connection")
 
 	upgrader := websocket.Upgrader{
