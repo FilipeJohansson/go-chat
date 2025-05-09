@@ -1,0 +1,12 @@
+FROM node:20
+
+WORKDIR /app
+
+COPY ./ /app/
+
+RUN npm install -g pnpm \
+  && rm -rf node_modules .pnpm-state.yaml \
+  && pnpm install --ignore-scripts --frozen-lockfile
+
+EXPOSE 5174
+CMD ["pnpm", "run", "dev"]

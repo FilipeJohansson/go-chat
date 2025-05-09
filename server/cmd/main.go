@@ -47,7 +47,7 @@ func main() {
 	}).Handler(mux)
 
 	go hub.Run()
-	addr := fmt.Sprintf(":%d", *port)
+	addr := fmt.Sprintf("0.0.0.0:%d", *port)
 
 	log.Printf("Starting server on %s", addr)
 	err := http.ListenAndServe(addr, handler)
