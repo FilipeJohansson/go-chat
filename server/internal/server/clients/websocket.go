@@ -107,7 +107,6 @@ func (c *WebSocketClient) Initialize(id uint64) {
 		}
 	})
 
-	c.logger.Printf("Broadcasting new client connected")
 	c.Broadcast(packets.NewRegister(c.id, c.username), c.room.Id)
 
 	c.logger.Printf("Fowarding already connected users to client")
@@ -118,7 +117,6 @@ func (c *WebSocketClient) Initialize(id uint64) {
 		}
 	})
 
-	c.logger.Printf("Sending last messages to the client")
 	for _, sm := range c.room.OrderLastMessages(c.room.LastMessages) {
 		c.SocketSendAs(sm.Msg, sm.SenderId, c.room.Id)
 	}
@@ -141,18 +139,9 @@ func (c *WebSocketClient) Room() *server.Room {
 }
 
 func (c *WebSocketClient) SetState(state server.ClientStateHandler) {
-	prevStateName := "None"
 	if c.state != nil {
-		prevStateName = c.state.Name()
 		c.state.OnExit()
 	}
-
-	newStateName := "None"
-	if state != nil {
-		newStateName = state.Name()
-	}
-
-	c.logger.Printf("Switching from state %s to %s", prevStateName, newStateName)
 
 	c.state = state
 
@@ -200,7 +189,6 @@ func (c *WebSocketClient) Broadcast(message packets.Pkt, roomId uint64) {
 // Listen messages from client
 func (c *WebSocketClient) ReadPump() {
 	defer func() {
-		c.logger.Println("Closing read pump")
 		c.Close("read pump closed")
 	}()
 
@@ -248,7 +236,6 @@ func (c *WebSocketClient) ReadPump() {
 // Send messages to the client
 func (c *WebSocketClient) WritePump() {
 	defer func() {
-		c.logger.Println("Closing write pump")
 		c.Close("write pump closed")
 	}()
 

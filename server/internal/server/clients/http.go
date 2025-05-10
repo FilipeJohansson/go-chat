@@ -259,7 +259,6 @@ func (c *HttpClient) handleRegisterRequest(message *packets.RegisterRequestMessa
 		http.Error(w, "An error occured", http.StatusInternalServerError)
 	}
 
-	c.logger.Printf("User %s registered successfully", username)
 	w.WriteHeader(http.StatusCreated)
 	w.Write(successData)
 }
@@ -285,8 +284,6 @@ func (c *HttpClient) handleRefreshRequest(w http.ResponseWriter, r *http.Request
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
-
-	c.logger.Println("RefreshToken valid, proceeding")
 
 	// Generate access and refresh tokens
 	newAccessToken, newRefreshToken, err := generateNewAccessAndRefreshTokensForUser(c, userId)
@@ -329,8 +326,6 @@ func (c *HttpClient) handleLogoutRequest(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	c.logger.Println("RefreshToken revoked")
-
 	w.Write([]byte(``))
 }
 
@@ -342,8 +337,6 @@ func (c *HttpClient) handleRoomsRequest(w http.ResponseWriter, r *http.Request) 
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
-
-	c.logger.Println("AccessToken valid, continuing to get rooms")
 
 	rooms := make([]*packets.NewRoomResponseMessage, 0, c.hub.Rooms.Len())
 	c.hub.Rooms.ForEach(func(id uint64, room server.Room) {
@@ -376,8 +369,6 @@ func (c *HttpClient) handleNewRoomRequest(message *packets.NewRoomRequestMessage
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
-
-	c.logger.Println("AccessToken valid, continuing to room creation")
 
 	userId := accessToken.Subject
 	roomName := message.Name
