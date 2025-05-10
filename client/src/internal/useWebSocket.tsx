@@ -1,11 +1,17 @@
 import { useEffect, useState } from "react"
 import { useNavigate } from "react-router"
-import { ChatMessage, IdMessage, LogoutRequestMessage, Packet } from "../proto/packets"
+import { ChatMessage, IdMessage, LogoutRequestMessage, Message as Msg, Packet } from "../proto/packets"
 import { Tokens, clearTokens, getTokens } from "./tokens"
 import { WebSocketClient } from "./websocket"
 
 export interface User {
   id: number,
+  name: string,
+}
+
+export interface Room {
+  roomId: number,
+  ownerId: string,
   name: string,
 }
 
@@ -15,15 +21,21 @@ export interface Message {
   message: string,
 }
 
-export function useWebSocket() {
+export function useWebSocket(roomId: string | null) {
   const navigate = useNavigate()
 
   const [isConnected, setIsConnected] = useState(false)
   const [messages, setMessages] = useState<Message[]>([])
+  const [connectedRoom, setConnectedRoom] = useState<Room | undefined>(undefined)
   const [connectedUser, setConnectedUser] = useState<User | undefined>(undefined)
   const [usersOnline, setUsersOnline] = useState<User[]>([])
 
   useEffect(() => {
+    if (!roomId) {
+      console.log("Error getting room id")
+      navigate("/rooms")
+    }
+
     const client: WebSocketClient = WebSocketClient.getInstance()
 
     const onConnected = () => {
@@ -61,7 +73,7 @@ export function useWebSocket() {
     }
 
     const accessToken: string = tokens.accessToken
-    client.connect(`ws://localhost:8080/ws?token=${accessToken}`)
+    client.connect(`ws://localhost:8080/ws?room=${roomId}&token=${accessToken}`)
 
     return () => {
       client.clear()
@@ -73,9 +85,18 @@ export function useWebSocket() {
   }, [connectedUser])
 
   const handleIdMsg = (idMsg: IdMessage) => {
+    if (!idMsg.room) {
+      console.log("Unable to get the room")
+      return
+    }
+
     const clientId: number = idMsg.id
     const username: string = idMsg.username
+    const roomId: number = idMsg.room.id
+    const roomOwnerId: string = idMsg.room.ownerId
+    const roomName: string = idMsg.room.name
     setConnectedUser({ id: clientId, name: username})
+    setConnectedRoom({ roomId: roomId, ownerId: roomOwnerId, name: roomName })
   }
 
   const handleChatMessage = (user: User, msg: ChatMessage) => {
@@ -116,26 +137,27 @@ export function useWebSocket() {
   const sendMessage = (message: string) => {
     const msg: string = message.trim()
     if (!msg) return
+    const roomId: number = connectedRoom!.roomId
     const senderId: number = connectedUser!.id
     const senderUsername: string = connectedUser!.name
     const timestamp: Date = new Date()
     const chatMessage: ChatMessage = { timestamp, senderUsername, msg }
-    const packet: Packet = Packet.create<Packet>({ senderId, chat: chatMessage })
+    const packet: Packet = Packet.create<Packet>({ roomId, senderId, chat: chatMessage })
     WebSocketClient.getInstance().send(packet)
 
     addMessage({ timestamp, user: connectedUser!, message }) // Add a copy of the message on our own side
   }
 
   const disconnect = () => {
-    const senderId: number = connectedUser!.id
     const refreshToken: string = getTokens()!.refreshToken
-    const logoutRequest: LogoutRequestMessage = { refreshToken }
-    const packet: Packet = Packet.create<Packet>({ senderId, logoutRequest })
-    const binary: Uint8Array = Packet.encode(packet).finish()
+    const logoutRequest: LogoutRequestMessage = LogoutRequestMessage.create()
+    const message: Msg = Msg.create<Msg>({ logout: logoutRequest })
+    const binary: Uint8Array = Msg.encode(message).finish()
     fetch("http://localhost:8080/logout", {
       method: "POST",
       headers: {
-        "Content-Type": "application/octet-stream"
+        "Content-Type": "application/octet-stream",
+        "Authorization": refreshToken,
       },
       body: binary,
       mode: "cors"

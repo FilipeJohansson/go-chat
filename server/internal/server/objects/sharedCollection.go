@@ -5,7 +5,7 @@ import "sync"
 // A generic, thread-safe map of objectis with auto-incrementing IDs
 type SharedCollection[T any] struct {
 	objectMap map[uint64]T
-	nextId		uint64
+	nextId    uint64
 	sync.Mutex
 }
 
@@ -19,11 +19,10 @@ func NewSharedCollection[T any](capacity ...int) *SharedCollection[T] {
 	}
 
 	return &SharedCollection[T]{
-		objectMap:	newObjMap,
-		nextId:			1,
+		objectMap: newObjMap,
+		nextId:    0,
 	}
 }
-
 
 // Add an object to the map with the given ID (if provided) or the next available ID
 // Returns the ID of the object added

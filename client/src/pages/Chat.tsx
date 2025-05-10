@@ -6,7 +6,10 @@ import { UserMessage } from "../components/UserMessage";
 import { Message, User, useWebSocket } from "../internal/useWebSocket";
 
 export function Chat() {
-  const { isConnected, connectedUser, messages, usersOnline, sendMessage, disconnect } = useWebSocket()
+  const queryParameters = new URLSearchParams(window.location.search)
+  const roomId = queryParameters.get("id")
+
+  const { isConnected, connectedUser, messages, usersOnline, sendMessage, disconnect } = useWebSocket(roomId)
 
   const [mesageContent, setMessageContent] = useState('')
 

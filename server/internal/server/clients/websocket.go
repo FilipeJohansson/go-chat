@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 	"time"
 
 	"server/internal/server"
@@ -25,6 +26,7 @@ type WebSocketClient struct {
 	id       uint64
 	userId   string
 	username string
+	room     *server.Room
 	conn     *websocket.Conn
 	hub      *server.Hub
 	sendChan chan *packets.Packet // To send messages from server to client. WritePump consumes it
@@ -35,27 +37,26 @@ type WebSocketClient struct {
 
 func NewWebSocketClient(hub *server.Hub, writer http.ResponseWriter, request *http.Request) (server.ClientInterfacer, error) {
 	token := request.URL.Query().Get("token")
-	if token == "" {
-		log.Println("Token not provided")
+	roomStr := request.URL.Query().Get("room")
+	accessToken, err := jwt.IsValidAccessToken(token, &jwt.AccessToken{})
+	if err != nil {
+		log.Printf("error getting access token: %v", err)
 		writer.WriteHeader(http.StatusUnauthorized)
-		return nil, errors.New("token not provided")
+		return nil, err
 	}
 
-	accessToken, err := jwt.Validate(token, &jwt.AccessToken{})
-	switch {
-	case err != nil:
-		reason := fmt.Sprintf("error validating token: %v", err)
-		log.Println(reason)
-		writer.WriteHeader(http.StatusUnauthorized)
-		return nil, errors.New(reason)
-	case accessToken.Type != "access":
-		reason := "token is not access token"
-		log.Println(reason)
-		writer.WriteHeader(http.StatusUnauthorized)
-		return nil, errors.New(reason)
+	roomId, err := strconv.ParseUint(roomStr, 10, 64)
+	if err != nil {
+		log.Printf("error converting roomId %v to uint64", roomId)
+		return nil, err
 	}
 
-	log.Println("AccessToken valid, upgrading connection")
+	room, found := hub.Rooms.Get(roomId)
+	if !found {
+		reason := fmt.Sprintf("unable to find room id %v", roomId)
+		log.Println(reason)
+		return nil, errors.New(reason)
+	}
 
 	upgrader := websocket.Upgrader{
 		ReadBufferSize:  1024,
@@ -70,6 +71,7 @@ func NewWebSocketClient(hub *server.Hub, writer http.ResponseWriter, request *ht
 
 	c := &WebSocketClient{
 		userId:   accessToken.Subject,
+		room:     &room,
 		hub:      hub,
 		conn:     conn,
 		sendChan: make(chan *packets.Packet, 256),
@@ -94,7 +96,7 @@ func (c *WebSocketClient) Initialize(id uint64) {
 	c.SetState(&states.Connected{})
 
 	// Check if has another client with the same userID connected. If yes, drop it
-	c.hub.Clients.ForEach(func(clientId uint64, client server.ClientInterfacer) {
+	c.room.Clients.ForEach(func(clientId uint64, client server.ClientInterfacer) {
 		if clientId == c.Id() {
 			return
 		}
@@ -106,10 +108,10 @@ func (c *WebSocketClient) Initialize(id uint64) {
 	})
 
 	c.logger.Printf("Broadcasting new client connected")
-	c.Broadcast(packets.NewRegister(c.id, c.username))
+	c.Broadcast(packets.NewRegister(c.id, c.username), c.room.Id)
 
 	c.logger.Printf("Fowarding already connected users to client")
-	c.hub.Clients.ForEach(func(clientId uint64, client server.ClientInterfacer) {
+	c.room.Clients.ForEach(func(clientId uint64, client server.ClientInterfacer) {
 		if clientId != c.Id() {
 			// Already connected client (client) is forwarding their register to the newer client (c)
 			client.PassToPeer(packets.NewRegister(clientId, client.Username()), c.Id())
@@ -117,8 +119,8 @@ func (c *WebSocketClient) Initialize(id uint64) {
 	})
 
 	c.logger.Printf("Sending last messages to the client")
-	for _, sm := range c.hub.OrderLastMessages(c.hub.LastMessages) {
-		c.SocketSendAs(sm.Msg, sm.SenderId)
+	for _, sm := range c.room.OrderLastMessages(c.room.LastMessages) {
+		c.SocketSendAs(sm.Msg, sm.SenderId, c.room.Id)
 	}
 }
 
@@ -132,6 +134,10 @@ func (c *WebSocketClient) UserId() string {
 
 func (c *WebSocketClient) Username() string {
 	return c.username
+}
+
+func (c *WebSocketClient) Room() *server.Room {
+	return c.room
 }
 
 func (c *WebSocketClient) SetState(state server.ClientStateHandler) {
@@ -160,31 +166,31 @@ func (c *WebSocketClient) GetState() server.ClientStateHandler {
 	return c.state
 }
 
-func (c *WebSocketClient) ProcessMessage(senderId uint64, message packets.Msg) {
-	c.state.HandleMessage(senderId, message)
+func (c *WebSocketClient) ProcessMessage(senderId uint64, roomId uint64, message packets.Pkt) {
+	c.state.HandleMessage(senderId, roomId, message)
 }
 
-func (c *WebSocketClient) SocketSend(message packets.Msg) {
-	c.SocketSendAs(message, c.id)
+func (c *WebSocketClient) SocketSend(message packets.Pkt) {
+	c.SocketSendAs(message, c.id, c.room.Id)
 }
 
-func (c *WebSocketClient) SocketSendAs(message packets.Msg, senderId uint64) {
+func (c *WebSocketClient) SocketSendAs(message packets.Pkt, senderId uint64, roomId uint64) {
 	select {
-	case c.sendChan <- &packets.Packet{SenderId: senderId, Msg: message}:
+	case c.sendChan <- &packets.Packet{SenderId: senderId, RoomId: roomId, Msg: message}:
 	default:
 		c.logger.Printf("Send channel full, dropping message: %T", message)
 	}
 }
 
-func (c *WebSocketClient) PassToPeer(message packets.Msg, peerId uint64) {
-	if peer, exists := c.hub.Clients.Get(peerId); exists {
-		peer.ProcessMessage(c.id, message)
+func (c *WebSocketClient) PassToPeer(message packets.Pkt, peerId uint64) {
+	if peer, exists := c.room.Clients.Get(peerId); exists {
+		peer.ProcessMessage(c.id, c.room.Id, message)
 	}
 }
 
-func (c *WebSocketClient) Broadcast(message packets.Msg) {
+func (c *WebSocketClient) Broadcast(message packets.Pkt, roomId uint64) {
 	select {
-	case c.hub.BroadcastChan <- &packets.Packet{SenderId: c.id, Msg: message}:
+	case c.hub.BroadcastChan <- &packets.Packet{SenderId: c.id, RoomId: roomId, Msg: message}:
 	default:
 		c.logger.Printf("Broadcast channel full, dropping message: %t", message)
 	}
@@ -224,9 +230,10 @@ func (c *WebSocketClient) ReadPump() {
 		}
 
 		packet.SenderId = c.id
+		packet.RoomId = c.room.Id
 
 		if msg, ok := packet.Msg.(*packets.Packet_Chat); ok {
-			c.hub.LastMessages.Add(server.StoragedMessage{
+			c.room.LastMessages.Add(server.StoragedMessage{
 				Timestamp:      time.Now(),
 				Msg:            msg,
 				SenderUsername: c.username,
@@ -234,7 +241,7 @@ func (c *WebSocketClient) ReadPump() {
 			})
 		}
 
-		c.ProcessMessage(packet.SenderId, packet.Msg)
+		c.ProcessMessage(packet.SenderId, packet.RoomId, packet.Msg)
 	}
 }
 
@@ -317,9 +324,9 @@ func checkOrigin(r *http.Request) bool {
 	origin := r.Header.Get("Origin")
 
 	switch origin {
-	case "http://localhost:5173":
-		return true
 	case "http://localhost:5174":
+		return true
+	case "http://localhost:5175":
 		return true
 	default:
 		return false

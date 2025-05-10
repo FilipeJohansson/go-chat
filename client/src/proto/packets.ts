@@ -10,6 +10,7 @@ import { Timestamp } from "./google/protobuf/timestamp";
 
 export const protobufPackage = "packets";
 
+/** WS */
 export interface ChatMessage {
   timestamp: Date | undefined;
   senderUsername: string;
@@ -19,6 +20,7 @@ export interface ChatMessage {
 export interface IdMessage {
   id: number;
   username: string;
+  room: RoomRegisteredMessage | undefined;
 }
 
 export interface RegisterMessage {
@@ -28,6 +30,18 @@ export interface RegisterMessage {
 
 export interface UnregisterMessage {
   id: number;
+}
+
+export interface RoomRegisteredMessage {
+  id: number;
+  ownerId: string;
+  name: string;
+}
+
+/** HTTP */
+export interface JwtMessage {
+  accessToken: string;
+  refreshToken: string;
 }
 
 export interface LoginRequestMessage {
@@ -41,11 +55,27 @@ export interface RegisterRequestMessage {
 }
 
 export interface RefreshRequestMessage {
-  refreshToken: string;
 }
 
 export interface LogoutRequestMessage {
-  refreshToken: string;
+}
+
+export interface NewRoomRequestMessage {
+  roomId: number;
+  name: string;
+}
+
+export interface NewRoomResponseMessage {
+  roomId: number;
+  ownerId: string;
+  name: string;
+}
+
+export interface RoomsRequestMessage {
+}
+
+export interface RoomsResponseMessage {
+  rooms: NewRoomResponseMessage[];
 }
 
 export interface OkResponseMessage {
@@ -55,24 +85,28 @@ export interface DenyResponseMessage {
   reason: string;
 }
 
-export interface JwtMessage {
-  accessToken: string;
-  refreshToken: string;
-}
-
 export interface Packet {
   senderId: number;
+  roomId: number;
   chat?: ChatMessage | undefined;
   id?: IdMessage | undefined;
   register?: RegisterMessage | undefined;
   unregister?: UnregisterMessage | undefined;
-  loginRequest?: LoginRequestMessage | undefined;
-  registerRequest?: RegisterRequestMessage | undefined;
-  refreshRequest?: RefreshRequestMessage | undefined;
-  logoutRequest?: LogoutRequestMessage | undefined;
   okResponse?: OkResponseMessage | undefined;
   denyResponse?: DenyResponseMessage | undefined;
+}
+
+export interface Message {
   jwt?: JwtMessage | undefined;
+  login?: LoginRequestMessage | undefined;
+  register?: RegisterRequestMessage | undefined;
+  refresh?: RefreshRequestMessage | undefined;
+  logout?: LogoutRequestMessage | undefined;
+  newRoom?: NewRoomRequestMessage | undefined;
+  roomsRequest?: RoomsRequestMessage | undefined;
+  roomsResponse?: RoomsResponseMessage | undefined;
+  okResponse?: OkResponseMessage | undefined;
+  denyResponse?: DenyResponseMessage | undefined;
 }
 
 function createBaseChatMessage(): ChatMessage {
@@ -168,7 +202,7 @@ export const ChatMessage: MessageFns<ChatMessage> = {
 };
 
 function createBaseIdMessage(): IdMessage {
-  return { id: 0, username: "" };
+  return { id: 0, username: "", room: undefined };
 }
 
 export const IdMessage: MessageFns<IdMessage> = {
@@ -178,6 +212,9 @@ export const IdMessage: MessageFns<IdMessage> = {
     }
     if (message.username !== "") {
       writer.uint32(18).string(message.username);
+    }
+    if (message.room !== undefined) {
+      RoomRegisteredMessage.encode(message.room, writer.uint32(26).fork()).join();
     }
     return writer;
   },
@@ -205,6 +242,14 @@ export const IdMessage: MessageFns<IdMessage> = {
           message.username = reader.string();
           continue;
         }
+        case 3: {
+          if (tag !== 26) {
+            break;
+          }
+
+          message.room = RoomRegisteredMessage.decode(reader, reader.uint32());
+          continue;
+        }
       }
       if ((tag & 7) === 4 || tag === 0) {
         break;
@@ -218,6 +263,7 @@ export const IdMessage: MessageFns<IdMessage> = {
     return {
       id: isSet(object.id) ? globalThis.Number(object.id) : 0,
       username: isSet(object.username) ? globalThis.String(object.username) : "",
+      room: isSet(object.room) ? RoomRegisteredMessage.fromJSON(object.room) : undefined,
     };
   },
 
@@ -229,6 +275,9 @@ export const IdMessage: MessageFns<IdMessage> = {
     if (message.username !== "") {
       obj.username = message.username;
     }
+    if (message.room !== undefined) {
+      obj.room = RoomRegisteredMessage.toJSON(message.room);
+    }
     return obj;
   },
 
@@ -239,6 +288,9 @@ export const IdMessage: MessageFns<IdMessage> = {
     const message = createBaseIdMessage();
     message.id = object.id ?? 0;
     message.username = object.username ?? "";
+    message.room = (object.room !== undefined && object.room !== null)
+      ? RoomRegisteredMessage.fromPartial(object.room)
+      : undefined;
     return message;
   },
 };
@@ -373,6 +425,174 @@ export const UnregisterMessage: MessageFns<UnregisterMessage> = {
   fromPartial<I extends Exact<DeepPartial<UnregisterMessage>, I>>(object: I): UnregisterMessage {
     const message = createBaseUnregisterMessage();
     message.id = object.id ?? 0;
+    return message;
+  },
+};
+
+function createBaseRoomRegisteredMessage(): RoomRegisteredMessage {
+  return { id: 0, ownerId: "", name: "" };
+}
+
+export const RoomRegisteredMessage: MessageFns<RoomRegisteredMessage> = {
+  encode(message: RoomRegisteredMessage, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.id !== 0) {
+      writer.uint32(8).uint64(message.id);
+    }
+    if (message.ownerId !== "") {
+      writer.uint32(18).string(message.ownerId);
+    }
+    if (message.name !== "") {
+      writer.uint32(26).string(message.name);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): RoomRegisteredMessage {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseRoomRegisteredMessage();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 8) {
+            break;
+          }
+
+          message.id = longToNumber(reader.uint64());
+          continue;
+        }
+        case 2: {
+          if (tag !== 18) {
+            break;
+          }
+
+          message.ownerId = reader.string();
+          continue;
+        }
+        case 3: {
+          if (tag !== 26) {
+            break;
+          }
+
+          message.name = reader.string();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): RoomRegisteredMessage {
+    return {
+      id: isSet(object.id) ? globalThis.Number(object.id) : 0,
+      ownerId: isSet(object.ownerId) ? globalThis.String(object.ownerId) : "",
+      name: isSet(object.name) ? globalThis.String(object.name) : "",
+    };
+  },
+
+  toJSON(message: RoomRegisteredMessage): unknown {
+    const obj: any = {};
+    if (message.id !== 0) {
+      obj.id = Math.round(message.id);
+    }
+    if (message.ownerId !== "") {
+      obj.ownerId = message.ownerId;
+    }
+    if (message.name !== "") {
+      obj.name = message.name;
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<RoomRegisteredMessage>, I>>(base?: I): RoomRegisteredMessage {
+    return RoomRegisteredMessage.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<RoomRegisteredMessage>, I>>(object: I): RoomRegisteredMessage {
+    const message = createBaseRoomRegisteredMessage();
+    message.id = object.id ?? 0;
+    message.ownerId = object.ownerId ?? "";
+    message.name = object.name ?? "";
+    return message;
+  },
+};
+
+function createBaseJwtMessage(): JwtMessage {
+  return { accessToken: "", refreshToken: "" };
+}
+
+export const JwtMessage: MessageFns<JwtMessage> = {
+  encode(message: JwtMessage, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.accessToken !== "") {
+      writer.uint32(10).string(message.accessToken);
+    }
+    if (message.refreshToken !== "") {
+      writer.uint32(18).string(message.refreshToken);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): JwtMessage {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseJwtMessage();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.accessToken = reader.string();
+          continue;
+        }
+        case 2: {
+          if (tag !== 18) {
+            break;
+          }
+
+          message.refreshToken = reader.string();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): JwtMessage {
+    return {
+      accessToken: isSet(object.accessToken) ? globalThis.String(object.accessToken) : "",
+      refreshToken: isSet(object.refreshToken) ? globalThis.String(object.refreshToken) : "",
+    };
+  },
+
+  toJSON(message: JwtMessage): unknown {
+    const obj: any = {};
+    if (message.accessToken !== "") {
+      obj.accessToken = message.accessToken;
+    }
+    if (message.refreshToken !== "") {
+      obj.refreshToken = message.refreshToken;
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<JwtMessage>, I>>(base?: I): JwtMessage {
+    return JwtMessage.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<JwtMessage>, I>>(object: I): JwtMessage {
+    const message = createBaseJwtMessage();
+    message.accessToken = object.accessToken ?? "";
+    message.refreshToken = object.refreshToken ?? "";
     return message;
   },
 };
@@ -530,14 +750,11 @@ export const RegisterRequestMessage: MessageFns<RegisterRequestMessage> = {
 };
 
 function createBaseRefreshRequestMessage(): RefreshRequestMessage {
-  return { refreshToken: "" };
+  return {};
 }
 
 export const RefreshRequestMessage: MessageFns<RefreshRequestMessage> = {
-  encode(message: RefreshRequestMessage, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
-    if (message.refreshToken !== "") {
-      writer.uint32(10).string(message.refreshToken);
-    }
+  encode(_: RefreshRequestMessage, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
     return writer;
   },
 
@@ -548,14 +765,6 @@ export const RefreshRequestMessage: MessageFns<RefreshRequestMessage> = {
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
-        case 1: {
-          if (tag !== 10) {
-            break;
-          }
-
-          message.refreshToken = reader.string();
-          continue;
-        }
       }
       if ((tag & 7) === 4 || tag === 0) {
         break;
@@ -565,37 +774,30 @@ export const RefreshRequestMessage: MessageFns<RefreshRequestMessage> = {
     return message;
   },
 
-  fromJSON(object: any): RefreshRequestMessage {
-    return { refreshToken: isSet(object.refreshToken) ? globalThis.String(object.refreshToken) : "" };
+  fromJSON(_: any): RefreshRequestMessage {
+    return {};
   },
 
-  toJSON(message: RefreshRequestMessage): unknown {
+  toJSON(_: RefreshRequestMessage): unknown {
     const obj: any = {};
-    if (message.refreshToken !== "") {
-      obj.refreshToken = message.refreshToken;
-    }
     return obj;
   },
 
   create<I extends Exact<DeepPartial<RefreshRequestMessage>, I>>(base?: I): RefreshRequestMessage {
     return RefreshRequestMessage.fromPartial(base ?? ({} as any));
   },
-  fromPartial<I extends Exact<DeepPartial<RefreshRequestMessage>, I>>(object: I): RefreshRequestMessage {
+  fromPartial<I extends Exact<DeepPartial<RefreshRequestMessage>, I>>(_: I): RefreshRequestMessage {
     const message = createBaseRefreshRequestMessage();
-    message.refreshToken = object.refreshToken ?? "";
     return message;
   },
 };
 
 function createBaseLogoutRequestMessage(): LogoutRequestMessage {
-  return { refreshToken: "" };
+  return {};
 }
 
 export const LogoutRequestMessage: MessageFns<LogoutRequestMessage> = {
-  encode(message: LogoutRequestMessage, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
-    if (message.refreshToken !== "") {
-      writer.uint32(10).string(message.refreshToken);
-    }
+  encode(_: LogoutRequestMessage, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
     return writer;
   },
 
@@ -606,12 +808,69 @@ export const LogoutRequestMessage: MessageFns<LogoutRequestMessage> = {
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(_: any): LogoutRequestMessage {
+    return {};
+  },
+
+  toJSON(_: LogoutRequestMessage): unknown {
+    const obj: any = {};
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<LogoutRequestMessage>, I>>(base?: I): LogoutRequestMessage {
+    return LogoutRequestMessage.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<LogoutRequestMessage>, I>>(_: I): LogoutRequestMessage {
+    const message = createBaseLogoutRequestMessage();
+    return message;
+  },
+};
+
+function createBaseNewRoomRequestMessage(): NewRoomRequestMessage {
+  return { roomId: 0, name: "" };
+}
+
+export const NewRoomRequestMessage: MessageFns<NewRoomRequestMessage> = {
+  encode(message: NewRoomRequestMessage, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.roomId !== 0) {
+      writer.uint32(8).uint64(message.roomId);
+    }
+    if (message.name !== "") {
+      writer.uint32(18).string(message.name);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): NewRoomRequestMessage {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseNewRoomRequestMessage();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
         case 1: {
-          if (tag !== 10) {
+          if (tag !== 8) {
             break;
           }
 
-          message.refreshToken = reader.string();
+          message.roomId = longToNumber(reader.uint64());
+          continue;
+        }
+        case 2: {
+          if (tag !== 18) {
+            break;
+          }
+
+          message.name = reader.string();
           continue;
         }
       }
@@ -623,24 +882,228 @@ export const LogoutRequestMessage: MessageFns<LogoutRequestMessage> = {
     return message;
   },
 
-  fromJSON(object: any): LogoutRequestMessage {
-    return { refreshToken: isSet(object.refreshToken) ? globalThis.String(object.refreshToken) : "" };
+  fromJSON(object: any): NewRoomRequestMessage {
+    return {
+      roomId: isSet(object.roomId) ? globalThis.Number(object.roomId) : 0,
+      name: isSet(object.name) ? globalThis.String(object.name) : "",
+    };
   },
 
-  toJSON(message: LogoutRequestMessage): unknown {
+  toJSON(message: NewRoomRequestMessage): unknown {
     const obj: any = {};
-    if (message.refreshToken !== "") {
-      obj.refreshToken = message.refreshToken;
+    if (message.roomId !== 0) {
+      obj.roomId = Math.round(message.roomId);
+    }
+    if (message.name !== "") {
+      obj.name = message.name;
     }
     return obj;
   },
 
-  create<I extends Exact<DeepPartial<LogoutRequestMessage>, I>>(base?: I): LogoutRequestMessage {
-    return LogoutRequestMessage.fromPartial(base ?? ({} as any));
+  create<I extends Exact<DeepPartial<NewRoomRequestMessage>, I>>(base?: I): NewRoomRequestMessage {
+    return NewRoomRequestMessage.fromPartial(base ?? ({} as any));
   },
-  fromPartial<I extends Exact<DeepPartial<LogoutRequestMessage>, I>>(object: I): LogoutRequestMessage {
-    const message = createBaseLogoutRequestMessage();
-    message.refreshToken = object.refreshToken ?? "";
+  fromPartial<I extends Exact<DeepPartial<NewRoomRequestMessage>, I>>(object: I): NewRoomRequestMessage {
+    const message = createBaseNewRoomRequestMessage();
+    message.roomId = object.roomId ?? 0;
+    message.name = object.name ?? "";
+    return message;
+  },
+};
+
+function createBaseNewRoomResponseMessage(): NewRoomResponseMessage {
+  return { roomId: 0, ownerId: "", name: "" };
+}
+
+export const NewRoomResponseMessage: MessageFns<NewRoomResponseMessage> = {
+  encode(message: NewRoomResponseMessage, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.roomId !== 0) {
+      writer.uint32(8).uint64(message.roomId);
+    }
+    if (message.ownerId !== "") {
+      writer.uint32(18).string(message.ownerId);
+    }
+    if (message.name !== "") {
+      writer.uint32(26).string(message.name);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): NewRoomResponseMessage {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseNewRoomResponseMessage();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 8) {
+            break;
+          }
+
+          message.roomId = longToNumber(reader.uint64());
+          continue;
+        }
+        case 2: {
+          if (tag !== 18) {
+            break;
+          }
+
+          message.ownerId = reader.string();
+          continue;
+        }
+        case 3: {
+          if (tag !== 26) {
+            break;
+          }
+
+          message.name = reader.string();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): NewRoomResponseMessage {
+    return {
+      roomId: isSet(object.roomId) ? globalThis.Number(object.roomId) : 0,
+      ownerId: isSet(object.ownerId) ? globalThis.String(object.ownerId) : "",
+      name: isSet(object.name) ? globalThis.String(object.name) : "",
+    };
+  },
+
+  toJSON(message: NewRoomResponseMessage): unknown {
+    const obj: any = {};
+    if (message.roomId !== 0) {
+      obj.roomId = Math.round(message.roomId);
+    }
+    if (message.ownerId !== "") {
+      obj.ownerId = message.ownerId;
+    }
+    if (message.name !== "") {
+      obj.name = message.name;
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<NewRoomResponseMessage>, I>>(base?: I): NewRoomResponseMessage {
+    return NewRoomResponseMessage.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<NewRoomResponseMessage>, I>>(object: I): NewRoomResponseMessage {
+    const message = createBaseNewRoomResponseMessage();
+    message.roomId = object.roomId ?? 0;
+    message.ownerId = object.ownerId ?? "";
+    message.name = object.name ?? "";
+    return message;
+  },
+};
+
+function createBaseRoomsRequestMessage(): RoomsRequestMessage {
+  return {};
+}
+
+export const RoomsRequestMessage: MessageFns<RoomsRequestMessage> = {
+  encode(_: RoomsRequestMessage, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): RoomsRequestMessage {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseRoomsRequestMessage();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(_: any): RoomsRequestMessage {
+    return {};
+  },
+
+  toJSON(_: RoomsRequestMessage): unknown {
+    const obj: any = {};
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<RoomsRequestMessage>, I>>(base?: I): RoomsRequestMessage {
+    return RoomsRequestMessage.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<RoomsRequestMessage>, I>>(_: I): RoomsRequestMessage {
+    const message = createBaseRoomsRequestMessage();
+    return message;
+  },
+};
+
+function createBaseRoomsResponseMessage(): RoomsResponseMessage {
+  return { rooms: [] };
+}
+
+export const RoomsResponseMessage: MessageFns<RoomsResponseMessage> = {
+  encode(message: RoomsResponseMessage, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    for (const v of message.rooms) {
+      NewRoomResponseMessage.encode(v!, writer.uint32(10).fork()).join();
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): RoomsResponseMessage {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseRoomsResponseMessage();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.rooms.push(NewRoomResponseMessage.decode(reader, reader.uint32()));
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): RoomsResponseMessage {
+    return {
+      rooms: globalThis.Array.isArray(object?.rooms)
+        ? object.rooms.map((e: any) => NewRoomResponseMessage.fromJSON(e))
+        : [],
+    };
+  },
+
+  toJSON(message: RoomsResponseMessage): unknown {
+    const obj: any = {};
+    if (message.rooms?.length) {
+      obj.rooms = message.rooms.map((e) => NewRoomResponseMessage.toJSON(e));
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<RoomsResponseMessage>, I>>(base?: I): RoomsResponseMessage {
+    return RoomsResponseMessage.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<RoomsResponseMessage>, I>>(object: I): RoomsResponseMessage {
+    const message = createBaseRoomsResponseMessage();
+    message.rooms = object.rooms?.map((e) => NewRoomResponseMessage.fromPartial(e)) || [];
     return message;
   },
 };
@@ -746,96 +1209,16 @@ export const DenyResponseMessage: MessageFns<DenyResponseMessage> = {
   },
 };
 
-function createBaseJwtMessage(): JwtMessage {
-  return { accessToken: "", refreshToken: "" };
-}
-
-export const JwtMessage: MessageFns<JwtMessage> = {
-  encode(message: JwtMessage, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
-    if (message.accessToken !== "") {
-      writer.uint32(10).string(message.accessToken);
-    }
-    if (message.refreshToken !== "") {
-      writer.uint32(18).string(message.refreshToken);
-    }
-    return writer;
-  },
-
-  decode(input: BinaryReader | Uint8Array, length?: number): JwtMessage {
-    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
-    let end = length === undefined ? reader.len : reader.pos + length;
-    const message = createBaseJwtMessage();
-    while (reader.pos < end) {
-      const tag = reader.uint32();
-      switch (tag >>> 3) {
-        case 1: {
-          if (tag !== 10) {
-            break;
-          }
-
-          message.accessToken = reader.string();
-          continue;
-        }
-        case 2: {
-          if (tag !== 18) {
-            break;
-          }
-
-          message.refreshToken = reader.string();
-          continue;
-        }
-      }
-      if ((tag & 7) === 4 || tag === 0) {
-        break;
-      }
-      reader.skip(tag & 7);
-    }
-    return message;
-  },
-
-  fromJSON(object: any): JwtMessage {
-    return {
-      accessToken: isSet(object.accessToken) ? globalThis.String(object.accessToken) : "",
-      refreshToken: isSet(object.refreshToken) ? globalThis.String(object.refreshToken) : "",
-    };
-  },
-
-  toJSON(message: JwtMessage): unknown {
-    const obj: any = {};
-    if (message.accessToken !== "") {
-      obj.accessToken = message.accessToken;
-    }
-    if (message.refreshToken !== "") {
-      obj.refreshToken = message.refreshToken;
-    }
-    return obj;
-  },
-
-  create<I extends Exact<DeepPartial<JwtMessage>, I>>(base?: I): JwtMessage {
-    return JwtMessage.fromPartial(base ?? ({} as any));
-  },
-  fromPartial<I extends Exact<DeepPartial<JwtMessage>, I>>(object: I): JwtMessage {
-    const message = createBaseJwtMessage();
-    message.accessToken = object.accessToken ?? "";
-    message.refreshToken = object.refreshToken ?? "";
-    return message;
-  },
-};
-
 function createBasePacket(): Packet {
   return {
     senderId: 0,
+    roomId: 0,
     chat: undefined,
     id: undefined,
     register: undefined,
     unregister: undefined,
-    loginRequest: undefined,
-    registerRequest: undefined,
-    refreshRequest: undefined,
-    logoutRequest: undefined,
     okResponse: undefined,
     denyResponse: undefined,
-    jwt: undefined,
   };
 }
 
@@ -844,38 +1227,26 @@ export const Packet: MessageFns<Packet> = {
     if (message.senderId !== 0) {
       writer.uint32(8).uint64(message.senderId);
     }
+    if (message.roomId !== 0) {
+      writer.uint32(16).uint64(message.roomId);
+    }
     if (message.chat !== undefined) {
-      ChatMessage.encode(message.chat, writer.uint32(18).fork()).join();
+      ChatMessage.encode(message.chat, writer.uint32(26).fork()).join();
     }
     if (message.id !== undefined) {
-      IdMessage.encode(message.id, writer.uint32(26).fork()).join();
+      IdMessage.encode(message.id, writer.uint32(34).fork()).join();
     }
     if (message.register !== undefined) {
-      RegisterMessage.encode(message.register, writer.uint32(34).fork()).join();
+      RegisterMessage.encode(message.register, writer.uint32(42).fork()).join();
     }
     if (message.unregister !== undefined) {
-      UnregisterMessage.encode(message.unregister, writer.uint32(42).fork()).join();
-    }
-    if (message.loginRequest !== undefined) {
-      LoginRequestMessage.encode(message.loginRequest, writer.uint32(50).fork()).join();
-    }
-    if (message.registerRequest !== undefined) {
-      RegisterRequestMessage.encode(message.registerRequest, writer.uint32(58).fork()).join();
-    }
-    if (message.refreshRequest !== undefined) {
-      RefreshRequestMessage.encode(message.refreshRequest, writer.uint32(66).fork()).join();
-    }
-    if (message.logoutRequest !== undefined) {
-      LogoutRequestMessage.encode(message.logoutRequest, writer.uint32(74).fork()).join();
+      UnregisterMessage.encode(message.unregister, writer.uint32(50).fork()).join();
     }
     if (message.okResponse !== undefined) {
-      OkResponseMessage.encode(message.okResponse, writer.uint32(82).fork()).join();
+      OkResponseMessage.encode(message.okResponse, writer.uint32(58).fork()).join();
     }
     if (message.denyResponse !== undefined) {
-      DenyResponseMessage.encode(message.denyResponse, writer.uint32(90).fork()).join();
-    }
-    if (message.jwt !== undefined) {
-      JwtMessage.encode(message.jwt, writer.uint32(98).fork()).join();
+      DenyResponseMessage.encode(message.denyResponse, writer.uint32(66).fork()).join();
     }
     return writer;
   },
@@ -896,11 +1267,11 @@ export const Packet: MessageFns<Packet> = {
           continue;
         }
         case 2: {
-          if (tag !== 18) {
+          if (tag !== 16) {
             break;
           }
 
-          message.chat = ChatMessage.decode(reader, reader.uint32());
+          message.roomId = longToNumber(reader.uint64());
           continue;
         }
         case 3: {
@@ -908,7 +1279,7 @@ export const Packet: MessageFns<Packet> = {
             break;
           }
 
-          message.id = IdMessage.decode(reader, reader.uint32());
+          message.chat = ChatMessage.decode(reader, reader.uint32());
           continue;
         }
         case 4: {
@@ -916,7 +1287,7 @@ export const Packet: MessageFns<Packet> = {
             break;
           }
 
-          message.register = RegisterMessage.decode(reader, reader.uint32());
+          message.id = IdMessage.decode(reader, reader.uint32());
           continue;
         }
         case 5: {
@@ -924,7 +1295,7 @@ export const Packet: MessageFns<Packet> = {
             break;
           }
 
-          message.unregister = UnregisterMessage.decode(reader, reader.uint32());
+          message.register = RegisterMessage.decode(reader, reader.uint32());
           continue;
         }
         case 6: {
@@ -932,7 +1303,7 @@ export const Packet: MessageFns<Packet> = {
             break;
           }
 
-          message.loginRequest = LoginRequestMessage.decode(reader, reader.uint32());
+          message.unregister = UnregisterMessage.decode(reader, reader.uint32());
           continue;
         }
         case 7: {
@@ -940,7 +1311,7 @@ export const Packet: MessageFns<Packet> = {
             break;
           }
 
-          message.registerRequest = RegisterRequestMessage.decode(reader, reader.uint32());
+          message.okResponse = OkResponseMessage.decode(reader, reader.uint32());
           continue;
         }
         case 8: {
@@ -948,39 +1319,7 @@ export const Packet: MessageFns<Packet> = {
             break;
           }
 
-          message.refreshRequest = RefreshRequestMessage.decode(reader, reader.uint32());
-          continue;
-        }
-        case 9: {
-          if (tag !== 74) {
-            break;
-          }
-
-          message.logoutRequest = LogoutRequestMessage.decode(reader, reader.uint32());
-          continue;
-        }
-        case 10: {
-          if (tag !== 82) {
-            break;
-          }
-
-          message.okResponse = OkResponseMessage.decode(reader, reader.uint32());
-          continue;
-        }
-        case 11: {
-          if (tag !== 90) {
-            break;
-          }
-
           message.denyResponse = DenyResponseMessage.decode(reader, reader.uint32());
-          continue;
-        }
-        case 12: {
-          if (tag !== 98) {
-            break;
-          }
-
-          message.jwt = JwtMessage.decode(reader, reader.uint32());
           continue;
         }
       }
@@ -995,19 +1334,13 @@ export const Packet: MessageFns<Packet> = {
   fromJSON(object: any): Packet {
     return {
       senderId: isSet(object.senderId) ? globalThis.Number(object.senderId) : 0,
+      roomId: isSet(object.roomId) ? globalThis.Number(object.roomId) : 0,
       chat: isSet(object.chat) ? ChatMessage.fromJSON(object.chat) : undefined,
       id: isSet(object.id) ? IdMessage.fromJSON(object.id) : undefined,
       register: isSet(object.register) ? RegisterMessage.fromJSON(object.register) : undefined,
       unregister: isSet(object.unregister) ? UnregisterMessage.fromJSON(object.unregister) : undefined,
-      loginRequest: isSet(object.loginRequest) ? LoginRequestMessage.fromJSON(object.loginRequest) : undefined,
-      registerRequest: isSet(object.registerRequest)
-        ? RegisterRequestMessage.fromJSON(object.registerRequest)
-        : undefined,
-      refreshRequest: isSet(object.refreshRequest) ? RefreshRequestMessage.fromJSON(object.refreshRequest) : undefined,
-      logoutRequest: isSet(object.logoutRequest) ? LogoutRequestMessage.fromJSON(object.logoutRequest) : undefined,
       okResponse: isSet(object.okResponse) ? OkResponseMessage.fromJSON(object.okResponse) : undefined,
       denyResponse: isSet(object.denyResponse) ? DenyResponseMessage.fromJSON(object.denyResponse) : undefined,
-      jwt: isSet(object.jwt) ? JwtMessage.fromJSON(object.jwt) : undefined,
     };
   },
 
@@ -1015,6 +1348,9 @@ export const Packet: MessageFns<Packet> = {
     const obj: any = {};
     if (message.senderId !== 0) {
       obj.senderId = Math.round(message.senderId);
+    }
+    if (message.roomId !== 0) {
+      obj.roomId = Math.round(message.roomId);
     }
     if (message.chat !== undefined) {
       obj.chat = ChatMessage.toJSON(message.chat);
@@ -1028,26 +1364,11 @@ export const Packet: MessageFns<Packet> = {
     if (message.unregister !== undefined) {
       obj.unregister = UnregisterMessage.toJSON(message.unregister);
     }
-    if (message.loginRequest !== undefined) {
-      obj.loginRequest = LoginRequestMessage.toJSON(message.loginRequest);
-    }
-    if (message.registerRequest !== undefined) {
-      obj.registerRequest = RegisterRequestMessage.toJSON(message.registerRequest);
-    }
-    if (message.refreshRequest !== undefined) {
-      obj.refreshRequest = RefreshRequestMessage.toJSON(message.refreshRequest);
-    }
-    if (message.logoutRequest !== undefined) {
-      obj.logoutRequest = LogoutRequestMessage.toJSON(message.logoutRequest);
-    }
     if (message.okResponse !== undefined) {
       obj.okResponse = OkResponseMessage.toJSON(message.okResponse);
     }
     if (message.denyResponse !== undefined) {
       obj.denyResponse = DenyResponseMessage.toJSON(message.denyResponse);
-    }
-    if (message.jwt !== undefined) {
-      obj.jwt = JwtMessage.toJSON(message.jwt);
     }
     return obj;
   },
@@ -1058,6 +1379,7 @@ export const Packet: MessageFns<Packet> = {
   fromPartial<I extends Exact<DeepPartial<Packet>, I>>(object: I): Packet {
     const message = createBasePacket();
     message.senderId = object.senderId ?? 0;
+    message.roomId = object.roomId ?? 0;
     message.chat = (object.chat !== undefined && object.chat !== null)
       ? ChatMessage.fromPartial(object.chat)
       : undefined;
@@ -1068,17 +1390,238 @@ export const Packet: MessageFns<Packet> = {
     message.unregister = (object.unregister !== undefined && object.unregister !== null)
       ? UnregisterMessage.fromPartial(object.unregister)
       : undefined;
-    message.loginRequest = (object.loginRequest !== undefined && object.loginRequest !== null)
-      ? LoginRequestMessage.fromPartial(object.loginRequest)
+    message.okResponse = (object.okResponse !== undefined && object.okResponse !== null)
+      ? OkResponseMessage.fromPartial(object.okResponse)
       : undefined;
-    message.registerRequest = (object.registerRequest !== undefined && object.registerRequest !== null)
-      ? RegisterRequestMessage.fromPartial(object.registerRequest)
+    message.denyResponse = (object.denyResponse !== undefined && object.denyResponse !== null)
+      ? DenyResponseMessage.fromPartial(object.denyResponse)
       : undefined;
-    message.refreshRequest = (object.refreshRequest !== undefined && object.refreshRequest !== null)
-      ? RefreshRequestMessage.fromPartial(object.refreshRequest)
+    return message;
+  },
+};
+
+function createBaseMessage(): Message {
+  return {
+    jwt: undefined,
+    login: undefined,
+    register: undefined,
+    refresh: undefined,
+    logout: undefined,
+    newRoom: undefined,
+    roomsRequest: undefined,
+    roomsResponse: undefined,
+    okResponse: undefined,
+    denyResponse: undefined,
+  };
+}
+
+export const Message: MessageFns<Message> = {
+  encode(message: Message, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.jwt !== undefined) {
+      JwtMessage.encode(message.jwt, writer.uint32(10).fork()).join();
+    }
+    if (message.login !== undefined) {
+      LoginRequestMessage.encode(message.login, writer.uint32(18).fork()).join();
+    }
+    if (message.register !== undefined) {
+      RegisterRequestMessage.encode(message.register, writer.uint32(26).fork()).join();
+    }
+    if (message.refresh !== undefined) {
+      RefreshRequestMessage.encode(message.refresh, writer.uint32(34).fork()).join();
+    }
+    if (message.logout !== undefined) {
+      LogoutRequestMessage.encode(message.logout, writer.uint32(42).fork()).join();
+    }
+    if (message.newRoom !== undefined) {
+      NewRoomRequestMessage.encode(message.newRoom, writer.uint32(50).fork()).join();
+    }
+    if (message.roomsRequest !== undefined) {
+      RoomsRequestMessage.encode(message.roomsRequest, writer.uint32(58).fork()).join();
+    }
+    if (message.roomsResponse !== undefined) {
+      RoomsResponseMessage.encode(message.roomsResponse, writer.uint32(66).fork()).join();
+    }
+    if (message.okResponse !== undefined) {
+      OkResponseMessage.encode(message.okResponse, writer.uint32(74).fork()).join();
+    }
+    if (message.denyResponse !== undefined) {
+      DenyResponseMessage.encode(message.denyResponse, writer.uint32(82).fork()).join();
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): Message {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseMessage();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.jwt = JwtMessage.decode(reader, reader.uint32());
+          continue;
+        }
+        case 2: {
+          if (tag !== 18) {
+            break;
+          }
+
+          message.login = LoginRequestMessage.decode(reader, reader.uint32());
+          continue;
+        }
+        case 3: {
+          if (tag !== 26) {
+            break;
+          }
+
+          message.register = RegisterRequestMessage.decode(reader, reader.uint32());
+          continue;
+        }
+        case 4: {
+          if (tag !== 34) {
+            break;
+          }
+
+          message.refresh = RefreshRequestMessage.decode(reader, reader.uint32());
+          continue;
+        }
+        case 5: {
+          if (tag !== 42) {
+            break;
+          }
+
+          message.logout = LogoutRequestMessage.decode(reader, reader.uint32());
+          continue;
+        }
+        case 6: {
+          if (tag !== 50) {
+            break;
+          }
+
+          message.newRoom = NewRoomRequestMessage.decode(reader, reader.uint32());
+          continue;
+        }
+        case 7: {
+          if (tag !== 58) {
+            break;
+          }
+
+          message.roomsRequest = RoomsRequestMessage.decode(reader, reader.uint32());
+          continue;
+        }
+        case 8: {
+          if (tag !== 66) {
+            break;
+          }
+
+          message.roomsResponse = RoomsResponseMessage.decode(reader, reader.uint32());
+          continue;
+        }
+        case 9: {
+          if (tag !== 74) {
+            break;
+          }
+
+          message.okResponse = OkResponseMessage.decode(reader, reader.uint32());
+          continue;
+        }
+        case 10: {
+          if (tag !== 82) {
+            break;
+          }
+
+          message.denyResponse = DenyResponseMessage.decode(reader, reader.uint32());
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): Message {
+    return {
+      jwt: isSet(object.jwt) ? JwtMessage.fromJSON(object.jwt) : undefined,
+      login: isSet(object.login) ? LoginRequestMessage.fromJSON(object.login) : undefined,
+      register: isSet(object.register) ? RegisterRequestMessage.fromJSON(object.register) : undefined,
+      refresh: isSet(object.refresh) ? RefreshRequestMessage.fromJSON(object.refresh) : undefined,
+      logout: isSet(object.logout) ? LogoutRequestMessage.fromJSON(object.logout) : undefined,
+      newRoom: isSet(object.newRoom) ? NewRoomRequestMessage.fromJSON(object.newRoom) : undefined,
+      roomsRequest: isSet(object.roomsRequest) ? RoomsRequestMessage.fromJSON(object.roomsRequest) : undefined,
+      roomsResponse: isSet(object.roomsResponse) ? RoomsResponseMessage.fromJSON(object.roomsResponse) : undefined,
+      okResponse: isSet(object.okResponse) ? OkResponseMessage.fromJSON(object.okResponse) : undefined,
+      denyResponse: isSet(object.denyResponse) ? DenyResponseMessage.fromJSON(object.denyResponse) : undefined,
+    };
+  },
+
+  toJSON(message: Message): unknown {
+    const obj: any = {};
+    if (message.jwt !== undefined) {
+      obj.jwt = JwtMessage.toJSON(message.jwt);
+    }
+    if (message.login !== undefined) {
+      obj.login = LoginRequestMessage.toJSON(message.login);
+    }
+    if (message.register !== undefined) {
+      obj.register = RegisterRequestMessage.toJSON(message.register);
+    }
+    if (message.refresh !== undefined) {
+      obj.refresh = RefreshRequestMessage.toJSON(message.refresh);
+    }
+    if (message.logout !== undefined) {
+      obj.logout = LogoutRequestMessage.toJSON(message.logout);
+    }
+    if (message.newRoom !== undefined) {
+      obj.newRoom = NewRoomRequestMessage.toJSON(message.newRoom);
+    }
+    if (message.roomsRequest !== undefined) {
+      obj.roomsRequest = RoomsRequestMessage.toJSON(message.roomsRequest);
+    }
+    if (message.roomsResponse !== undefined) {
+      obj.roomsResponse = RoomsResponseMessage.toJSON(message.roomsResponse);
+    }
+    if (message.okResponse !== undefined) {
+      obj.okResponse = OkResponseMessage.toJSON(message.okResponse);
+    }
+    if (message.denyResponse !== undefined) {
+      obj.denyResponse = DenyResponseMessage.toJSON(message.denyResponse);
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<Message>, I>>(base?: I): Message {
+    return Message.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<Message>, I>>(object: I): Message {
+    const message = createBaseMessage();
+    message.jwt = (object.jwt !== undefined && object.jwt !== null) ? JwtMessage.fromPartial(object.jwt) : undefined;
+    message.login = (object.login !== undefined && object.login !== null)
+      ? LoginRequestMessage.fromPartial(object.login)
       : undefined;
-    message.logoutRequest = (object.logoutRequest !== undefined && object.logoutRequest !== null)
-      ? LogoutRequestMessage.fromPartial(object.logoutRequest)
+    message.register = (object.register !== undefined && object.register !== null)
+      ? RegisterRequestMessage.fromPartial(object.register)
+      : undefined;
+    message.refresh = (object.refresh !== undefined && object.refresh !== null)
+      ? RefreshRequestMessage.fromPartial(object.refresh)
+      : undefined;
+    message.logout = (object.logout !== undefined && object.logout !== null)
+      ? LogoutRequestMessage.fromPartial(object.logout)
+      : undefined;
+    message.newRoom = (object.newRoom !== undefined && object.newRoom !== null)
+      ? NewRoomRequestMessage.fromPartial(object.newRoom)
+      : undefined;
+    message.roomsRequest = (object.roomsRequest !== undefined && object.roomsRequest !== null)
+      ? RoomsRequestMessage.fromPartial(object.roomsRequest)
+      : undefined;
+    message.roomsResponse = (object.roomsResponse !== undefined && object.roomsResponse !== null)
+      ? RoomsResponseMessage.fromPartial(object.roomsResponse)
       : undefined;
     message.okResponse = (object.okResponse !== undefined && object.okResponse !== null)
       ? OkResponseMessage.fromPartial(object.okResponse)
@@ -1086,7 +1629,6 @@ export const Packet: MessageFns<Packet> = {
     message.denyResponse = (object.denyResponse !== undefined && object.denyResponse !== null)
       ? DenyResponseMessage.fromPartial(object.denyResponse)
       : undefined;
-    message.jwt = (object.jwt !== undefined && object.jwt !== null) ? JwtMessage.fromPartial(object.jwt) : undefined;
     return message;
   },
 };

@@ -2,7 +2,7 @@ import { LoaderCircle } from "lucide-react"
 import { useEffect, useState } from "react"
 import { useNavigate } from "react-router"
 import { clearTokens, getTokens, saveTokens } from "../internal/tokens"
-import { LoginRequestMessage, Packet } from "../proto/packets"
+import { LoginRequestMessage, Message } from "../proto/packets"
 
 export function Login() {
   const navigate = useNavigate()
@@ -25,14 +25,14 @@ export function Login() {
     }
 
     const loginReq: LoginRequestMessage = LoginRequestMessage.create({ username, password })
-    const packet: Packet = Packet.create({ loginRequest: loginReq })
-    sendLoginPacket(packet)
+    const message: Message = Message.create({ login: loginReq })
+    sendLoginPacket(message)
   }
 
-  const sendLoginPacket = (packet: Packet): void => {
+  const sendLoginPacket = (message: Message): void => {
     setLoading(true)
 
-    const binary: Uint8Array = Packet.encode(packet).finish()
+    const binary: Uint8Array = Message.encode(message).finish()
     fetch("http://localhost:8080/login", {
       method: "POST",
       headers: {
@@ -43,13 +43,19 @@ export function Login() {
     })
     .then((response: Response): Promise<ArrayBuffer> => response.arrayBuffer())
     .then((buffer: ArrayBuffer) => {
-      const data: Uint8Array = new Uint8Array(buffer)
-      const packet: Packet = Packet.decode(data)
+      const data = new Uint8Array(buffer)
+      const message: Message = Message.decode(data)
+      console.log("Server Response:", message)
+      console.log(message)
 
-      if (packet.denyResponse) setError(packet.denyResponse.reason)
+      if (message.denyResponse) setError(message.denyResponse.reason)
+      if (!message.jwt) {
+        console.log("Message not type JWT message")
+        return
+      }
 
-      const accessToken: string | undefined = packet.jwt?.accessToken
-      const refreshToken: string | undefined = packet.jwt?.refreshToken
+      const accessToken: string | undefined = message.jwt.accessToken
+      const refreshToken: string | undefined = message.jwt.refreshToken
 
       if (!accessToken || !refreshToken) {
         console.log("login: error getting access or refresh token")
@@ -58,7 +64,6 @@ export function Login() {
       }
 
       saveTokens({ accessToken, refreshToken })
-
       navigate("/chat")
     })
     .catch(error => console.error("Erro:", error))

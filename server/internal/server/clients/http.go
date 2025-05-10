@@ -45,7 +45,7 @@ func NewHttpClient(hub *server.Hub, writer http.ResponseWriter, request *http.Re
 	}
 	defer request.Body.Close()
 
-	packet := &packets.Packet{}
+	packet := &packets.Message{}
 	err = proto.Unmarshal(body, packet)
 	if err != nil {
 		log.Printf("Error unmarshalling request body: %v", err)
@@ -53,15 +53,19 @@ func NewHttpClient(hub *server.Hub, writer http.ResponseWriter, request *http.Re
 		return nil, errors.New("error unmarshalling request body")
 	}
 
-	switch message := packet.Msg.(type) {
-	case *packets.Packet_LoginRequest:
-		c.handleLoginRequest(message, writer)
-	case *packets.Packet_RegisterRequest:
-		c.handleRegisterRequest(message, writer)
-	case *packets.Packet_RefreshRequest:
-		c.handleRefreshRequest(message, writer)
-	case *packets.Packet_LogoutRequest:
-		c.handleLogoutRequest(message, writer)
+	switch message := packet.Type.(type) {
+	case *packets.Message_Login:
+		c.handleLoginRequest(message.Login, writer)
+	case *packets.Message_Register:
+		c.handleRegisterRequest(message.Register, writer)
+	case *packets.Message_Refresh:
+		c.handleRefreshRequest(writer, request)
+	case *packets.Message_Logout:
+		c.handleLogoutRequest(writer, request)
+	case *packets.Message_RoomsRequest:
+		c.handleRoomsRequest(writer, request)
+	case *packets.Message_NewRoom:
+		c.handleNewRoomRequest(message.NewRoom, writer, request)
 	default:
 		http.Error(writer, "Message not supported", http.StatusBadRequest)
 	}
@@ -89,15 +93,15 @@ func (c *HttpClient) GetState() server.ClientStateHandler {
 	return nil
 }
 
-func (c *HttpClient) ProcessMessage(senderId uint64, message packets.Msg) {}
+func (c *HttpClient) ProcessMessage(senderId uint64, message packets.Pkt) {}
 
-func (c *HttpClient) SocketSend(message packets.Msg) {}
+func (c *HttpClient) SocketSend(message packets.Pkt) {}
 
-func (c *HttpClient) SocketSendAs(message packets.Msg, senderId uint64) {}
+func (c *HttpClient) SocketSendAs(message packets.Pkt, senderId uint64) {}
 
-func (c *HttpClient) PassToPeer(message packets.Msg, peerId uint64) {}
+func (c *HttpClient) PassToPeer(message packets.Pkt, peerId uint64) {}
 
-func (c *HttpClient) Broadcast(message packets.Msg) {}
+func (c *HttpClient) Broadcast(message packets.Pkt) {}
 
 func (c *HttpClient) ReadPump() {}
 
@@ -109,15 +113,14 @@ func (c *HttpClient) DbTx() *server.DbTx {
 
 func (c *HttpClient) Close(reason string) {}
 
-func (c *HttpClient) handleLoginRequest(packet *packets.Packet_LoginRequest, w http.ResponseWriter) {
-	username := packet.LoginRequest.Username
-	password := packet.LoginRequest.Password
+func (c *HttpClient) handleLoginRequest(message *packets.LoginRequestMessage, w http.ResponseWriter) {
+	username := message.Username
+	password := message.Password
 
-	genericFailMessagePacket := &packets.Packet{
-		SenderId: 0,
-		Msg:      packets.NewDenyResponse("Incorrect username or password"),
+	genericFailMessage := &packets.Message{
+		Type: packets.NewDenyResponseMsg("Incorrect username or password"),
 	}
-	genericFailMessageData, err := proto.Marshal(genericFailMessagePacket)
+	genericFailMessageData, err := proto.Marshal(genericFailMessage)
 	if err != nil {
 		c.logger.Printf("Failed to marshal genericFailMessage packet: %v", err)
 		http.Error(w, "An error occured", http.StatusInternalServerError)
@@ -154,10 +157,10 @@ func (c *HttpClient) handleLoginRequest(packet *packets.Packet_LoginRequest, w h
 		return
 	}
 
-	successPacket := &packets.Packet{
-		Msg: packets.NewJwt(accessToken, refreshToken),
+	tokensMessage := &packets.Message{
+		Type: packets.NewJwtMsg(accessToken, refreshToken),
 	}
-	successData, err := proto.Marshal(successPacket)
+	tokensData, err := proto.Marshal(tokensMessage)
 	if err != nil {
 		c.logger.Printf("Failed to marshal success packet: %v", err)
 		http.Error(w, "An error occured", http.StatusInternalServerError)
@@ -166,22 +169,21 @@ func (c *HttpClient) handleLoginRequest(packet *packets.Packet_LoginRequest, w h
 
 	c.logger.Printf("User %s logged in successfully", username)
 	w.WriteHeader(http.StatusOK)
-	w.Write(successData)
+	w.Write(tokensData)
 }
 
-func (c *HttpClient) handleRegisterRequest(message *packets.Packet_RegisterRequest, w http.ResponseWriter) {
-	username := message.RegisterRequest.Username
-	password := message.RegisterRequest.Password
+func (c *HttpClient) handleRegisterRequest(message *packets.RegisterRequestMessage, w http.ResponseWriter) {
+	username := message.Username
+	password := message.Password
 
 	err := validateUsername(username)
 	if err != nil {
 		reason := fmt.Sprintf("Invalid username: %v", err)
 		c.logger.Println(reason)
-
-		reasonPacket := &packets.Packet{
-			Msg: packets.NewDenyResponse(reason),
+		reasonMessage := &packets.Message{
+			Type: packets.NewDenyResponseMsg(reason),
 		}
-		data, err := proto.Marshal(reasonPacket)
+		data, err := proto.Marshal(reasonMessage)
 		if err != nil {
 			c.logger.Printf("Failed to marshal reasonPacket: %v", err)
 			http.Error(w, "An error occured", http.StatusInternalServerError)
@@ -195,11 +197,10 @@ func (c *HttpClient) handleRegisterRequest(message *packets.Packet_RegisterReque
 	if err != nil {
 		reason := fmt.Sprintf("Invalid password: %v", err)
 		c.logger.Println(reason)
-
-		reasonPacket := &packets.Packet{
-			Msg: packets.NewDenyResponse(reason),
+		reasonMessage := &packets.Message{
+			Type: packets.NewDenyResponseMsg(reason),
 		}
-		data, err := proto.Marshal(reasonPacket)
+		data, err := proto.Marshal(reasonMessage)
 		if err != nil {
 			c.logger.Printf("Failed to mashal reasonPacket: %v", err)
 			http.Error(w, "An error occured", http.StatusInternalServerError)
@@ -211,11 +212,10 @@ func (c *HttpClient) handleRegisterRequest(message *packets.Packet_RegisterReque
 
 	if _, err := c.dbTx.Queries.GetUserByUsername(c.dbTx.Ctx, username); err == nil {
 		c.logger.Printf("User already exists: %v", err)
-		reasonPacket := &packets.Packet{
-			SenderId: 0,
-			Msg:      packets.NewDenyResponse("User already exists"),
+		reasonMessage := &packets.Message{
+			Type: packets.NewDenyResponseMsg("User already exists"),
 		}
-		data, err := proto.Marshal(reasonPacket)
+		data, err := proto.Marshal(reasonMessage)
 		if err != nil {
 			c.logger.Printf("Failed to marshal reasonPacket: %v", err)
 			http.Error(w, "An error occured", http.StatusInternalServerError)
@@ -225,12 +225,10 @@ func (c *HttpClient) handleRegisterRequest(message *packets.Packet_RegisterReque
 		return
 	}
 
-	genericFailMessage := packets.NewDenyResponse("Internal Server Error: Failed to register user, please try again later")
-	genericFailMessagePacket := &packets.Packet{
-		SenderId: 0,
-		Msg:      genericFailMessage,
+	genericFailMessage := &packets.Message{
+		Type: packets.NewDenyResponseMsg("Internal Server Error: Failed to register user, please try again later"),
 	}
-	genericFailMessageData, err := proto.Marshal(genericFailMessagePacket)
+	genericFailMessageData, err := proto.Marshal(genericFailMessage)
 	if err != nil {
 		c.logger.Printf("Failed to marshal genericFailMessage packet: %v", err)
 		http.Error(w, "An error occured", http.StatusInternalServerError)
@@ -252,10 +250,10 @@ func (c *HttpClient) handleRegisterRequest(message *packets.Packet_RegisterReque
 		return
 	}
 
-	successPacket := &packets.Packet{
-		Msg: packets.NewOkResponse(),
+	successMessage := &packets.Message{
+		Type: packets.NewOkResponseMsg(),
 	}
-	successData, err := proto.Marshal(successPacket)
+	successData, err := proto.Marshal(successMessage)
 	if err != nil {
 		c.logger.Printf("Failed to marshal success packet: %v", err)
 		http.Error(w, "An error occured", http.StatusInternalServerError)
@@ -266,26 +264,12 @@ func (c *HttpClient) handleRegisterRequest(message *packets.Packet_RegisterReque
 	w.Write(successData)
 }
 
-func (c *HttpClient) handleRefreshRequest(message *packets.Packet_RefreshRequest, w http.ResponseWriter) {
-	token := message.RefreshRequest.GetRefreshToken()
-	if token == "" {
-		reason := "token not provided"
-		c.logger.Println(reason)
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
-	refreshToken, err := jwt.Validate(token, &jwt.RefreshToken{})
-	switch {
-	case err != nil:
-		reason := fmt.Sprintf("error validating token: %v", err)
-		c.logger.Println(reason)
+func (c *HttpClient) handleRefreshRequest(w http.ResponseWriter, r *http.Request) {
+	token := r.Header.Get("Authorization")
+	refreshToken, err := jwt.IsValidRefreshToken(token, &jwt.RefreshToken{})
+	if err != nil {
+		c.logger.Printf("error validating refresh token: %v", err)
 		w.WriteHeader(http.StatusUnauthorized)
-		return
-	case refreshToken.Type != "refresh":
-		reason := "token is not refresh token"
-		c.logger.Println(reason)
-		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
@@ -312,10 +296,10 @@ func (c *HttpClient) handleRefreshRequest(message *packets.Packet_RefreshRequest
 		return
 	}
 
-	successPacket := &packets.Packet{
-		Msg: packets.NewJwt(newAccessToken, newRefreshToken),
+	tokensMessage := &packets.Message{
+		Type: packets.NewJwtMsg(newAccessToken, newRefreshToken),
 	}
-	successData, err := proto.Marshal(successPacket)
+	tokensData, err := proto.Marshal(tokensMessage)
 	if err != nil {
 		c.logger.Printf("Failed to marshal success packet: %v", err)
 		http.Error(w, "An error occured", http.StatusInternalServerError)
@@ -324,29 +308,15 @@ func (c *HttpClient) handleRefreshRequest(message *packets.Packet_RefreshRequest
 
 	c.logger.Printf("Refresh successfull for user id %v", userId)
 	w.WriteHeader(http.StatusOK)
-	w.Write(successData)
+	w.Write(tokensData)
 }
 
-func (c *HttpClient) handleLogoutRequest(message *packets.Packet_LogoutRequest, w http.ResponseWriter) {
-	token := message.LogoutRequest.GetRefreshToken()
-	if token == "" {
-		reason := "token not provided"
-		c.logger.Println(reason)
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
-	refreshToken, err := jwt.Validate(token, &jwt.RefreshToken{})
-	switch {
-	case err != nil:
-		reason := fmt.Sprintf("error validating token: %v", err)
-		c.logger.Println(reason)
-		w.Write([]byte(``))
-		return
-	case refreshToken.Type != "refresh":
-		reason := "token is not refresh token"
-		c.logger.Println(reason)
-		w.Write([]byte(``))
+func (c *HttpClient) handleLogoutRequest(w http.ResponseWriter, r *http.Request) {
+	token := r.Header.Get("Authorization")
+	refreshToken, err := jwt.IsValidRefreshToken(token, &jwt.RefreshToken{})
+	if err != nil {
+		c.logger.Printf("error validating refresh token: %v", err)
+		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
 
@@ -362,6 +332,75 @@ func (c *HttpClient) handleLogoutRequest(message *packets.Packet_LogoutRequest, 
 	c.logger.Println("RefreshToken revoked")
 
 	w.Write([]byte(``))
+}
+
+func (c *HttpClient) handleRoomsRequest(w http.ResponseWriter, r *http.Request) {
+	token := r.Header.Get("Authorization")
+	_, err := jwt.IsValidAccessToken(token, &jwt.AccessToken{})
+	if err != nil {
+		c.logger.Printf("error validating access token: %v", err)
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	c.logger.Println("AccessToken valid, continuing to get rooms")
+
+	rooms := make([]*packets.NewRoomResponseMessage, 0, c.hub.Rooms.Len())
+	c.hub.Rooms.ForEach(func(id uint64, room server.Room) {
+		rooms = append(rooms, &packets.NewRoomResponseMessage{
+			RoomId:  id,
+			OwnerId: room.OwnerId,
+			Name:    room.Name,
+		})
+	})
+
+	roomsMessage := &packets.Message{
+		Type: packets.NewRoomsResponseMsg(rooms),
+	}
+	roomsData, err := proto.Marshal(roomsMessage)
+	if err != nil {
+		c.logger.Printf("Failed to marshal success packet: %v", err)
+		http.Error(w, "An error occured", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Write(roomsData)
+}
+
+func (c *HttpClient) handleNewRoomRequest(message *packets.NewRoomRequestMessage, w http.ResponseWriter, r *http.Request) {
+	token := r.Header.Get("Authorization")
+	accessToken, err := jwt.IsValidAccessToken(token, &jwt.AccessToken{})
+	if err != nil {
+		c.logger.Printf("error validating access token: %v", err)
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	c.logger.Println("AccessToken valid, continuing to room creation")
+
+	userId := accessToken.Subject
+	roomName := message.Name
+	c.createRoom(userId, roomName)
+
+	successMessage := &packets.Message{
+		Type: packets.NewOkResponseMsg(),
+	}
+	successData, err := proto.Marshal(successMessage)
+	if err != nil {
+		c.logger.Printf("Failed to marshal success packet: %v", err)
+		http.Error(w, "An error occured", http.StatusInternalServerError)
+	}
+	w.WriteHeader(http.StatusOK)
+	w.Write(successData)
+}
+
+func (c *HttpClient) createRoom(ownerId string, name string) {
+	c.logger.Printf("Creating room '%v' with owner %v", name, ownerId)
+	id := uint64(c.hub.Rooms.Len())
+	room := server.NewRoom(id, ownerId, name)
+	roomId := c.hub.Rooms.Add(*room)
+	c.logger.Printf("New room with ID %v created", roomId)
 }
 
 func validateUsername(username string) error {

@@ -22,6 +22,7 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// WS
 type ChatMessage struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
 	Timestamp      *timestamppb.Timestamp `protobuf:"bytes,1,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
@@ -86,6 +87,7 @@ type IdMessage struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            uint64                 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
 	Username      string                 `protobuf:"bytes,2,opt,name=username,proto3" json:"username,omitempty"`
+	Room          *RoomRegisteredMessage `protobuf:"bytes,3,opt,name=room,proto3" json:"room,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -132,6 +134,13 @@ func (x *IdMessage) GetUsername() string {
 		return x.Username
 	}
 	return ""
+}
+
+func (x *IdMessage) GetRoom() *RoomRegisteredMessage {
+	if x != nil {
+		return x.Room
+	}
+	return nil
 }
 
 type RegisterMessage struct {
@@ -230,6 +239,119 @@ func (x *UnregisterMessage) GetId() uint64 {
 	return 0
 }
 
+type RoomRegisteredMessage struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            uint64                 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	OwnerId       string                 `protobuf:"bytes,2,opt,name=ownerId,proto3" json:"ownerId,omitempty"`
+	Name          string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RoomRegisteredMessage) Reset() {
+	*x = RoomRegisteredMessage{}
+	mi := &file_packets_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RoomRegisteredMessage) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RoomRegisteredMessage) ProtoMessage() {}
+
+func (x *RoomRegisteredMessage) ProtoReflect() protoreflect.Message {
+	mi := &file_packets_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RoomRegisteredMessage.ProtoReflect.Descriptor instead.
+func (*RoomRegisteredMessage) Descriptor() ([]byte, []int) {
+	return file_packets_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *RoomRegisteredMessage) GetId() uint64 {
+	if x != nil {
+		return x.Id
+	}
+	return 0
+}
+
+func (x *RoomRegisteredMessage) GetOwnerId() string {
+	if x != nil {
+		return x.OwnerId
+	}
+	return ""
+}
+
+func (x *RoomRegisteredMessage) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+// HTTP
+type JwtMessage struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	AccessToken   string                 `protobuf:"bytes,1,opt,name=access_token,json=accessToken,proto3" json:"access_token,omitempty"`
+	RefreshToken  string                 `protobuf:"bytes,2,opt,name=refresh_token,json=refreshToken,proto3" json:"refresh_token,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *JwtMessage) Reset() {
+	*x = JwtMessage{}
+	mi := &file_packets_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *JwtMessage) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*JwtMessage) ProtoMessage() {}
+
+func (x *JwtMessage) ProtoReflect() protoreflect.Message {
+	mi := &file_packets_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use JwtMessage.ProtoReflect.Descriptor instead.
+func (*JwtMessage) Descriptor() ([]byte, []int) {
+	return file_packets_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *JwtMessage) GetAccessToken() string {
+	if x != nil {
+		return x.AccessToken
+	}
+	return ""
+}
+
+func (x *JwtMessage) GetRefreshToken() string {
+	if x != nil {
+		return x.RefreshToken
+	}
+	return ""
+}
+
 type LoginRequestMessage struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Username      string                 `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty"`
@@ -240,7 +362,7 @@ type LoginRequestMessage struct {
 
 func (x *LoginRequestMessage) Reset() {
 	*x = LoginRequestMessage{}
-	mi := &file_packets_proto_msgTypes[4]
+	mi := &file_packets_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -252,7 +374,7 @@ func (x *LoginRequestMessage) String() string {
 func (*LoginRequestMessage) ProtoMessage() {}
 
 func (x *LoginRequestMessage) ProtoReflect() protoreflect.Message {
-	mi := &file_packets_proto_msgTypes[4]
+	mi := &file_packets_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -265,7 +387,7 @@ func (x *LoginRequestMessage) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LoginRequestMessage.ProtoReflect.Descriptor instead.
 func (*LoginRequestMessage) Descriptor() ([]byte, []int) {
-	return file_packets_proto_rawDescGZIP(), []int{4}
+	return file_packets_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *LoginRequestMessage) GetUsername() string {
@@ -292,7 +414,7 @@ type RegisterRequestMessage struct {
 
 func (x *RegisterRequestMessage) Reset() {
 	*x = RegisterRequestMessage{}
-	mi := &file_packets_proto_msgTypes[5]
+	mi := &file_packets_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -304,7 +426,7 @@ func (x *RegisterRequestMessage) String() string {
 func (*RegisterRequestMessage) ProtoMessage() {}
 
 func (x *RegisterRequestMessage) ProtoReflect() protoreflect.Message {
-	mi := &file_packets_proto_msgTypes[5]
+	mi := &file_packets_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -317,7 +439,7 @@ func (x *RegisterRequestMessage) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RegisterRequestMessage.ProtoReflect.Descriptor instead.
 func (*RegisterRequestMessage) Descriptor() ([]byte, []int) {
-	return file_packets_proto_rawDescGZIP(), []int{5}
+	return file_packets_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *RegisterRequestMessage) GetUsername() string {
@@ -336,14 +458,13 @@ func (x *RegisterRequestMessage) GetPassword() string {
 
 type RefreshRequestMessage struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	RefreshToken  string                 `protobuf:"bytes,1,opt,name=refresh_token,json=refreshToken,proto3" json:"refresh_token,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *RefreshRequestMessage) Reset() {
 	*x = RefreshRequestMessage{}
-	mi := &file_packets_proto_msgTypes[6]
+	mi := &file_packets_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -355,7 +476,7 @@ func (x *RefreshRequestMessage) String() string {
 func (*RefreshRequestMessage) ProtoMessage() {}
 
 func (x *RefreshRequestMessage) ProtoReflect() protoreflect.Message {
-	mi := &file_packets_proto_msgTypes[6]
+	mi := &file_packets_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -368,26 +489,18 @@ func (x *RefreshRequestMessage) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RefreshRequestMessage.ProtoReflect.Descriptor instead.
 func (*RefreshRequestMessage) Descriptor() ([]byte, []int) {
-	return file_packets_proto_rawDescGZIP(), []int{6}
-}
-
-func (x *RefreshRequestMessage) GetRefreshToken() string {
-	if x != nil {
-		return x.RefreshToken
-	}
-	return ""
+	return file_packets_proto_rawDescGZIP(), []int{8}
 }
 
 type LogoutRequestMessage struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	RefreshToken  string                 `protobuf:"bytes,1,opt,name=refresh_token,json=refreshToken,proto3" json:"refresh_token,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *LogoutRequestMessage) Reset() {
 	*x = LogoutRequestMessage{}
-	mi := &file_packets_proto_msgTypes[7]
+	mi := &file_packets_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -399,7 +512,7 @@ func (x *LogoutRequestMessage) String() string {
 func (*LogoutRequestMessage) ProtoMessage() {}
 
 func (x *LogoutRequestMessage) ProtoReflect() protoreflect.Message {
-	mi := &file_packets_proto_msgTypes[7]
+	mi := &file_packets_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -412,14 +525,199 @@ func (x *LogoutRequestMessage) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LogoutRequestMessage.ProtoReflect.Descriptor instead.
 func (*LogoutRequestMessage) Descriptor() ([]byte, []int) {
-	return file_packets_proto_rawDescGZIP(), []int{7}
+	return file_packets_proto_rawDescGZIP(), []int{9}
 }
 
-func (x *LogoutRequestMessage) GetRefreshToken() string {
+type NewRoomRequestMessage struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	RoomId        uint64                 `protobuf:"varint,1,opt,name=roomId,proto3" json:"roomId,omitempty"`
+	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *NewRoomRequestMessage) Reset() {
+	*x = NewRoomRequestMessage{}
+	mi := &file_packets_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *NewRoomRequestMessage) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*NewRoomRequestMessage) ProtoMessage() {}
+
+func (x *NewRoomRequestMessage) ProtoReflect() protoreflect.Message {
+	mi := &file_packets_proto_msgTypes[10]
 	if x != nil {
-		return x.RefreshToken
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use NewRoomRequestMessage.ProtoReflect.Descriptor instead.
+func (*NewRoomRequestMessage) Descriptor() ([]byte, []int) {
+	return file_packets_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *NewRoomRequestMessage) GetRoomId() uint64 {
+	if x != nil {
+		return x.RoomId
+	}
+	return 0
+}
+
+func (x *NewRoomRequestMessage) GetName() string {
+	if x != nil {
+		return x.Name
 	}
 	return ""
+}
+
+type NewRoomResponseMessage struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	RoomId        uint64                 `protobuf:"varint,1,opt,name=roomId,proto3" json:"roomId,omitempty"`
+	OwnerId       string                 `protobuf:"bytes,2,opt,name=ownerId,proto3" json:"ownerId,omitempty"`
+	Name          string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *NewRoomResponseMessage) Reset() {
+	*x = NewRoomResponseMessage{}
+	mi := &file_packets_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *NewRoomResponseMessage) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*NewRoomResponseMessage) ProtoMessage() {}
+
+func (x *NewRoomResponseMessage) ProtoReflect() protoreflect.Message {
+	mi := &file_packets_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use NewRoomResponseMessage.ProtoReflect.Descriptor instead.
+func (*NewRoomResponseMessage) Descriptor() ([]byte, []int) {
+	return file_packets_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *NewRoomResponseMessage) GetRoomId() uint64 {
+	if x != nil {
+		return x.RoomId
+	}
+	return 0
+}
+
+func (x *NewRoomResponseMessage) GetOwnerId() string {
+	if x != nil {
+		return x.OwnerId
+	}
+	return ""
+}
+
+func (x *NewRoomResponseMessage) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+type RoomsRequestMessage struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RoomsRequestMessage) Reset() {
+	*x = RoomsRequestMessage{}
+	mi := &file_packets_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RoomsRequestMessage) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RoomsRequestMessage) ProtoMessage() {}
+
+func (x *RoomsRequestMessage) ProtoReflect() protoreflect.Message {
+	mi := &file_packets_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RoomsRequestMessage.ProtoReflect.Descriptor instead.
+func (*RoomsRequestMessage) Descriptor() ([]byte, []int) {
+	return file_packets_proto_rawDescGZIP(), []int{12}
+}
+
+type RoomsResponseMessage struct {
+	state         protoimpl.MessageState    `protogen:"open.v1"`
+	Rooms         []*NewRoomResponseMessage `protobuf:"bytes,1,rep,name=rooms,proto3" json:"rooms,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RoomsResponseMessage) Reset() {
+	*x = RoomsResponseMessage{}
+	mi := &file_packets_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RoomsResponseMessage) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RoomsResponseMessage) ProtoMessage() {}
+
+func (x *RoomsResponseMessage) ProtoReflect() protoreflect.Message {
+	mi := &file_packets_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RoomsResponseMessage.ProtoReflect.Descriptor instead.
+func (*RoomsResponseMessage) Descriptor() ([]byte, []int) {
+	return file_packets_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *RoomsResponseMessage) GetRooms() []*NewRoomResponseMessage {
+	if x != nil {
+		return x.Rooms
+	}
+	return nil
 }
 
 type OkResponseMessage struct {
@@ -430,7 +728,7 @@ type OkResponseMessage struct {
 
 func (x *OkResponseMessage) Reset() {
 	*x = OkResponseMessage{}
-	mi := &file_packets_proto_msgTypes[8]
+	mi := &file_packets_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -442,7 +740,7 @@ func (x *OkResponseMessage) String() string {
 func (*OkResponseMessage) ProtoMessage() {}
 
 func (x *OkResponseMessage) ProtoReflect() protoreflect.Message {
-	mi := &file_packets_proto_msgTypes[8]
+	mi := &file_packets_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -455,7 +753,7 @@ func (x *OkResponseMessage) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OkResponseMessage.ProtoReflect.Descriptor instead.
 func (*OkResponseMessage) Descriptor() ([]byte, []int) {
-	return file_packets_proto_rawDescGZIP(), []int{8}
+	return file_packets_proto_rawDescGZIP(), []int{14}
 }
 
 type DenyResponseMessage struct {
@@ -467,7 +765,7 @@ type DenyResponseMessage struct {
 
 func (x *DenyResponseMessage) Reset() {
 	*x = DenyResponseMessage{}
-	mi := &file_packets_proto_msgTypes[9]
+	mi := &file_packets_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -479,7 +777,7 @@ func (x *DenyResponseMessage) String() string {
 func (*DenyResponseMessage) ProtoMessage() {}
 
 func (x *DenyResponseMessage) ProtoReflect() protoreflect.Message {
-	mi := &file_packets_proto_msgTypes[9]
+	mi := &file_packets_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -492,7 +790,7 @@ func (x *DenyResponseMessage) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DenyResponseMessage.ProtoReflect.Descriptor instead.
 func (*DenyResponseMessage) Descriptor() ([]byte, []int) {
-	return file_packets_proto_rawDescGZIP(), []int{9}
+	return file_packets_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *DenyResponseMessage) GetReason() string {
@@ -502,74 +800,18 @@ func (x *DenyResponseMessage) GetReason() string {
 	return ""
 }
 
-type JwtMessage struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	AccessToken   string                 `protobuf:"bytes,1,opt,name=access_token,json=accessToken,proto3" json:"access_token,omitempty"`
-	RefreshToken  string                 `protobuf:"bytes,2,opt,name=refresh_token,json=refreshToken,proto3" json:"refresh_token,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *JwtMessage) Reset() {
-	*x = JwtMessage{}
-	mi := &file_packets_proto_msgTypes[10]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *JwtMessage) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*JwtMessage) ProtoMessage() {}
-
-func (x *JwtMessage) ProtoReflect() protoreflect.Message {
-	mi := &file_packets_proto_msgTypes[10]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use JwtMessage.ProtoReflect.Descriptor instead.
-func (*JwtMessage) Descriptor() ([]byte, []int) {
-	return file_packets_proto_rawDescGZIP(), []int{10}
-}
-
-func (x *JwtMessage) GetAccessToken() string {
-	if x != nil {
-		return x.AccessToken
-	}
-	return ""
-}
-
-func (x *JwtMessage) GetRefreshToken() string {
-	if x != nil {
-		return x.RefreshToken
-	}
-	return ""
-}
-
 type Packet struct {
 	state    protoimpl.MessageState `protogen:"open.v1"`
 	SenderId uint64                 `protobuf:"varint,1,opt,name=sender_id,json=senderId,proto3" json:"sender_id,omitempty"`
+	RoomId   uint64                 `protobuf:"varint,2,opt,name=room_id,json=roomId,proto3" json:"room_id,omitempty"`
 	// Types that are valid to be assigned to Msg:
 	//
 	//	*Packet_Chat
 	//	*Packet_Id
 	//	*Packet_Register
 	//	*Packet_Unregister
-	//	*Packet_LoginRequest
-	//	*Packet_RegisterRequest
-	//	*Packet_RefreshRequest
-	//	*Packet_LogoutRequest
 	//	*Packet_OkResponse
 	//	*Packet_DenyResponse
-	//	*Packet_Jwt
 	Msg           isPacket_Msg `protobuf_oneof:"msg"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -577,7 +819,7 @@ type Packet struct {
 
 func (x *Packet) Reset() {
 	*x = Packet{}
-	mi := &file_packets_proto_msgTypes[11]
+	mi := &file_packets_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -589,7 +831,7 @@ func (x *Packet) String() string {
 func (*Packet) ProtoMessage() {}
 
 func (x *Packet) ProtoReflect() protoreflect.Message {
-	mi := &file_packets_proto_msgTypes[11]
+	mi := &file_packets_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -602,12 +844,19 @@ func (x *Packet) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Packet.ProtoReflect.Descriptor instead.
 func (*Packet) Descriptor() ([]byte, []int) {
-	return file_packets_proto_rawDescGZIP(), []int{11}
+	return file_packets_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *Packet) GetSenderId() uint64 {
 	if x != nil {
 		return x.SenderId
+	}
+	return 0
+}
+
+func (x *Packet) GetRoomId() uint64 {
+	if x != nil {
+		return x.RoomId
 	}
 	return 0
 }
@@ -655,42 +904,6 @@ func (x *Packet) GetUnregister() *UnregisterMessage {
 	return nil
 }
 
-func (x *Packet) GetLoginRequest() *LoginRequestMessage {
-	if x != nil {
-		if x, ok := x.Msg.(*Packet_LoginRequest); ok {
-			return x.LoginRequest
-		}
-	}
-	return nil
-}
-
-func (x *Packet) GetRegisterRequest() *RegisterRequestMessage {
-	if x != nil {
-		if x, ok := x.Msg.(*Packet_RegisterRequest); ok {
-			return x.RegisterRequest
-		}
-	}
-	return nil
-}
-
-func (x *Packet) GetRefreshRequest() *RefreshRequestMessage {
-	if x != nil {
-		if x, ok := x.Msg.(*Packet_RefreshRequest); ok {
-			return x.RefreshRequest
-		}
-	}
-	return nil
-}
-
-func (x *Packet) GetLogoutRequest() *LogoutRequestMessage {
-	if x != nil {
-		if x, ok := x.Msg.(*Packet_LogoutRequest); ok {
-			return x.LogoutRequest
-		}
-	}
-	return nil
-}
-
 func (x *Packet) GetOkResponse() *OkResponseMessage {
 	if x != nil {
 		if x, ok := x.Msg.(*Packet_OkResponse); ok {
@@ -709,61 +922,32 @@ func (x *Packet) GetDenyResponse() *DenyResponseMessage {
 	return nil
 }
 
-func (x *Packet) GetJwt() *JwtMessage {
-	if x != nil {
-		if x, ok := x.Msg.(*Packet_Jwt); ok {
-			return x.Jwt
-		}
-	}
-	return nil
-}
-
 type isPacket_Msg interface {
 	isPacket_Msg()
 }
 
 type Packet_Chat struct {
-	Chat *ChatMessage `protobuf:"bytes,2,opt,name=chat,proto3,oneof"`
+	Chat *ChatMessage `protobuf:"bytes,3,opt,name=chat,proto3,oneof"`
 }
 
 type Packet_Id struct {
-	Id *IdMessage `protobuf:"bytes,3,opt,name=id,proto3,oneof"`
+	Id *IdMessage `protobuf:"bytes,4,opt,name=id,proto3,oneof"`
 }
 
 type Packet_Register struct {
-	Register *RegisterMessage `protobuf:"bytes,4,opt,name=register,proto3,oneof"`
+	Register *RegisterMessage `protobuf:"bytes,5,opt,name=register,proto3,oneof"`
 }
 
 type Packet_Unregister struct {
-	Unregister *UnregisterMessage `protobuf:"bytes,5,opt,name=unregister,proto3,oneof"`
-}
-
-type Packet_LoginRequest struct {
-	LoginRequest *LoginRequestMessage `protobuf:"bytes,6,opt,name=login_request,json=loginRequest,proto3,oneof"`
-}
-
-type Packet_RegisterRequest struct {
-	RegisterRequest *RegisterRequestMessage `protobuf:"bytes,7,opt,name=register_request,json=registerRequest,proto3,oneof"`
-}
-
-type Packet_RefreshRequest struct {
-	RefreshRequest *RefreshRequestMessage `protobuf:"bytes,8,opt,name=refresh_request,json=refreshRequest,proto3,oneof"`
-}
-
-type Packet_LogoutRequest struct {
-	LogoutRequest *LogoutRequestMessage `protobuf:"bytes,9,opt,name=logout_request,json=logoutRequest,proto3,oneof"`
+	Unregister *UnregisterMessage `protobuf:"bytes,6,opt,name=unregister,proto3,oneof"`
 }
 
 type Packet_OkResponse struct {
-	OkResponse *OkResponseMessage `protobuf:"bytes,10,opt,name=ok_response,json=okResponse,proto3,oneof"`
+	OkResponse *OkResponseMessage `protobuf:"bytes,7,opt,name=ok_response,json=okResponse,proto3,oneof"`
 }
 
 type Packet_DenyResponse struct {
-	DenyResponse *DenyResponseMessage `protobuf:"bytes,11,opt,name=deny_response,json=denyResponse,proto3,oneof"`
-}
-
-type Packet_Jwt struct {
-	Jwt *JwtMessage `protobuf:"bytes,12,opt,name=jwt,proto3,oneof"`
+	DenyResponse *DenyResponseMessage `protobuf:"bytes,8,opt,name=deny_response,json=denyResponse,proto3,oneof"`
 }
 
 func (*Packet_Chat) isPacket_Msg() {}
@@ -774,19 +958,219 @@ func (*Packet_Register) isPacket_Msg() {}
 
 func (*Packet_Unregister) isPacket_Msg() {}
 
-func (*Packet_LoginRequest) isPacket_Msg() {}
-
-func (*Packet_RegisterRequest) isPacket_Msg() {}
-
-func (*Packet_RefreshRequest) isPacket_Msg() {}
-
-func (*Packet_LogoutRequest) isPacket_Msg() {}
-
 func (*Packet_OkResponse) isPacket_Msg() {}
 
 func (*Packet_DenyResponse) isPacket_Msg() {}
 
-func (*Packet_Jwt) isPacket_Msg() {}
+type Message struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Types that are valid to be assigned to Type:
+	//
+	//	*Message_Jwt
+	//	*Message_Login
+	//	*Message_Register
+	//	*Message_Refresh
+	//	*Message_Logout
+	//	*Message_NewRoom
+	//	*Message_RoomsRequest
+	//	*Message_RoomsResponse
+	//	*Message_OkResponse
+	//	*Message_DenyResponse
+	Type          isMessage_Type `protobuf_oneof:"type"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Message) Reset() {
+	*x = Message{}
+	mi := &file_packets_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Message) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Message) ProtoMessage() {}
+
+func (x *Message) ProtoReflect() protoreflect.Message {
+	mi := &file_packets_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Message.ProtoReflect.Descriptor instead.
+func (*Message) Descriptor() ([]byte, []int) {
+	return file_packets_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *Message) GetType() isMessage_Type {
+	if x != nil {
+		return x.Type
+	}
+	return nil
+}
+
+func (x *Message) GetJwt() *JwtMessage {
+	if x != nil {
+		if x, ok := x.Type.(*Message_Jwt); ok {
+			return x.Jwt
+		}
+	}
+	return nil
+}
+
+func (x *Message) GetLogin() *LoginRequestMessage {
+	if x != nil {
+		if x, ok := x.Type.(*Message_Login); ok {
+			return x.Login
+		}
+	}
+	return nil
+}
+
+func (x *Message) GetRegister() *RegisterRequestMessage {
+	if x != nil {
+		if x, ok := x.Type.(*Message_Register); ok {
+			return x.Register
+		}
+	}
+	return nil
+}
+
+func (x *Message) GetRefresh() *RefreshRequestMessage {
+	if x != nil {
+		if x, ok := x.Type.(*Message_Refresh); ok {
+			return x.Refresh
+		}
+	}
+	return nil
+}
+
+func (x *Message) GetLogout() *LogoutRequestMessage {
+	if x != nil {
+		if x, ok := x.Type.(*Message_Logout); ok {
+			return x.Logout
+		}
+	}
+	return nil
+}
+
+func (x *Message) GetNewRoom() *NewRoomRequestMessage {
+	if x != nil {
+		if x, ok := x.Type.(*Message_NewRoom); ok {
+			return x.NewRoom
+		}
+	}
+	return nil
+}
+
+func (x *Message) GetRoomsRequest() *RoomsRequestMessage {
+	if x != nil {
+		if x, ok := x.Type.(*Message_RoomsRequest); ok {
+			return x.RoomsRequest
+		}
+	}
+	return nil
+}
+
+func (x *Message) GetRoomsResponse() *RoomsResponseMessage {
+	if x != nil {
+		if x, ok := x.Type.(*Message_RoomsResponse); ok {
+			return x.RoomsResponse
+		}
+	}
+	return nil
+}
+
+func (x *Message) GetOkResponse() *OkResponseMessage {
+	if x != nil {
+		if x, ok := x.Type.(*Message_OkResponse); ok {
+			return x.OkResponse
+		}
+	}
+	return nil
+}
+
+func (x *Message) GetDenyResponse() *DenyResponseMessage {
+	if x != nil {
+		if x, ok := x.Type.(*Message_DenyResponse); ok {
+			return x.DenyResponse
+		}
+	}
+	return nil
+}
+
+type isMessage_Type interface {
+	isMessage_Type()
+}
+
+type Message_Jwt struct {
+	Jwt *JwtMessage `protobuf:"bytes,1,opt,name=jwt,proto3,oneof"`
+}
+
+type Message_Login struct {
+	Login *LoginRequestMessage `protobuf:"bytes,2,opt,name=login,proto3,oneof"`
+}
+
+type Message_Register struct {
+	Register *RegisterRequestMessage `protobuf:"bytes,3,opt,name=register,proto3,oneof"`
+}
+
+type Message_Refresh struct {
+	Refresh *RefreshRequestMessage `protobuf:"bytes,4,opt,name=refresh,proto3,oneof"`
+}
+
+type Message_Logout struct {
+	Logout *LogoutRequestMessage `protobuf:"bytes,5,opt,name=logout,proto3,oneof"`
+}
+
+type Message_NewRoom struct {
+	NewRoom *NewRoomRequestMessage `protobuf:"bytes,6,opt,name=new_room,json=newRoom,proto3,oneof"`
+}
+
+type Message_RoomsRequest struct {
+	RoomsRequest *RoomsRequestMessage `protobuf:"bytes,7,opt,name=rooms_request,json=roomsRequest,proto3,oneof"`
+}
+
+type Message_RoomsResponse struct {
+	RoomsResponse *RoomsResponseMessage `protobuf:"bytes,8,opt,name=rooms_response,json=roomsResponse,proto3,oneof"`
+}
+
+type Message_OkResponse struct {
+	OkResponse *OkResponseMessage `protobuf:"bytes,9,opt,name=ok_response,json=okResponse,proto3,oneof"`
+}
+
+type Message_DenyResponse struct {
+	DenyResponse *DenyResponseMessage `protobuf:"bytes,10,opt,name=deny_response,json=denyResponse,proto3,oneof"`
+}
+
+func (*Message_Jwt) isMessage_Type() {}
+
+func (*Message_Login) isMessage_Type() {}
+
+func (*Message_Register) isMessage_Type() {}
+
+func (*Message_Refresh) isMessage_Type() {}
+
+func (*Message_Logout) isMessage_Type() {}
+
+func (*Message_NewRoom) isMessage_Type() {}
+
+func (*Message_RoomsRequest) isMessage_Type() {}
+
+func (*Message_RoomsResponse) isMessage_Type() {}
+
+func (*Message_OkResponse) isMessage_Type() {}
+
+func (*Message_DenyResponse) isMessage_Type() {}
 
 var File_packets_proto protoreflect.FileDescriptor
 
@@ -796,50 +1180,72 @@ const file_packets_proto_rawDesc = "" +
 	"\vChatMessage\x128\n" +
 	"\ttimestamp\x18\x01 \x01(\v2\x1a.google.protobuf.TimestampR\ttimestamp\x12&\n" +
 	"\x0esenderUsername\x18\x02 \x01(\tR\x0esenderUsername\x12\x10\n" +
-	"\x03msg\x18\x03 \x01(\tR\x03msg\"7\n" +
+	"\x03msg\x18\x03 \x01(\tR\x03msg\"k\n" +
 	"\tIdMessage\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12\x1a\n" +
-	"\busername\x18\x02 \x01(\tR\busername\"=\n" +
+	"\busername\x18\x02 \x01(\tR\busername\x122\n" +
+	"\x04room\x18\x03 \x01(\v2\x1e.packets.RoomRegisteredMessageR\x04room\"=\n" +
 	"\x0fRegisterMessage\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12\x1a\n" +
 	"\busername\x18\x02 \x01(\tR\busername\"#\n" +
 	"\x11UnregisterMessage\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\x04R\x02id\"M\n" +
+	"\x02id\x18\x01 \x01(\x04R\x02id\"U\n" +
+	"\x15RoomRegisteredMessage\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\x04R\x02id\x12\x18\n" +
+	"\aownerId\x18\x02 \x01(\tR\aownerId\x12\x12\n" +
+	"\x04name\x18\x03 \x01(\tR\x04name\"T\n" +
+	"\n" +
+	"JwtMessage\x12!\n" +
+	"\faccess_token\x18\x01 \x01(\tR\vaccessToken\x12#\n" +
+	"\rrefresh_token\x18\x02 \x01(\tR\frefreshToken\"M\n" +
 	"\x13LoginRequestMessage\x12\x1a\n" +
 	"\busername\x18\x01 \x01(\tR\busername\x12\x1a\n" +
 	"\bpassword\x18\x02 \x01(\tR\bpassword\"P\n" +
 	"\x16RegisterRequestMessage\x12\x1a\n" +
 	"\busername\x18\x01 \x01(\tR\busername\x12\x1a\n" +
-	"\bpassword\x18\x02 \x01(\tR\bpassword\"<\n" +
-	"\x15RefreshRequestMessage\x12#\n" +
-	"\rrefresh_token\x18\x01 \x01(\tR\frefreshToken\";\n" +
-	"\x14LogoutRequestMessage\x12#\n" +
-	"\rrefresh_token\x18\x01 \x01(\tR\frefreshToken\"\x13\n" +
+	"\bpassword\x18\x02 \x01(\tR\bpassword\"\x17\n" +
+	"\x15RefreshRequestMessage\"\x16\n" +
+	"\x14LogoutRequestMessage\"C\n" +
+	"\x15NewRoomRequestMessage\x12\x16\n" +
+	"\x06roomId\x18\x01 \x01(\x04R\x06roomId\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\"^\n" +
+	"\x16NewRoomResponseMessage\x12\x16\n" +
+	"\x06roomId\x18\x01 \x01(\x04R\x06roomId\x12\x18\n" +
+	"\aownerId\x18\x02 \x01(\tR\aownerId\x12\x12\n" +
+	"\x04name\x18\x03 \x01(\tR\x04name\"\x15\n" +
+	"\x13RoomsRequestMessage\"M\n" +
+	"\x14RoomsResponseMessage\x125\n" +
+	"\x05rooms\x18\x01 \x03(\v2\x1f.packets.NewRoomResponseMessageR\x05rooms\"\x13\n" +
 	"\x11OkResponseMessage\"-\n" +
 	"\x13DenyResponseMessage\x12\x16\n" +
-	"\x06reason\x18\x01 \x01(\tR\x06reason\"T\n" +
-	"\n" +
-	"JwtMessage\x12!\n" +
-	"\faccess_token\x18\x01 \x01(\tR\vaccessToken\x12#\n" +
-	"\rrefresh_token\x18\x02 \x01(\tR\frefreshToken\"\xc7\x05\n" +
+	"\x06reason\x18\x01 \x01(\tR\x06reason\"\x91\x03\n" +
 	"\x06Packet\x12\x1b\n" +
-	"\tsender_id\x18\x01 \x01(\x04R\bsenderId\x12*\n" +
-	"\x04chat\x18\x02 \x01(\v2\x14.packets.ChatMessageH\x00R\x04chat\x12$\n" +
-	"\x02id\x18\x03 \x01(\v2\x12.packets.IdMessageH\x00R\x02id\x126\n" +
-	"\bregister\x18\x04 \x01(\v2\x18.packets.RegisterMessageH\x00R\bregister\x12<\n" +
+	"\tsender_id\x18\x01 \x01(\x04R\bsenderId\x12\x17\n" +
+	"\aroom_id\x18\x02 \x01(\x04R\x06roomId\x12*\n" +
+	"\x04chat\x18\x03 \x01(\v2\x14.packets.ChatMessageH\x00R\x04chat\x12$\n" +
+	"\x02id\x18\x04 \x01(\v2\x12.packets.IdMessageH\x00R\x02id\x126\n" +
+	"\bregister\x18\x05 \x01(\v2\x18.packets.RegisterMessageH\x00R\bregister\x12<\n" +
 	"\n" +
-	"unregister\x18\x05 \x01(\v2\x1a.packets.UnregisterMessageH\x00R\n" +
-	"unregister\x12C\n" +
-	"\rlogin_request\x18\x06 \x01(\v2\x1c.packets.LoginRequestMessageH\x00R\floginRequest\x12L\n" +
-	"\x10register_request\x18\a \x01(\v2\x1f.packets.RegisterRequestMessageH\x00R\x0fregisterRequest\x12I\n" +
-	"\x0frefresh_request\x18\b \x01(\v2\x1e.packets.RefreshRequestMessageH\x00R\x0erefreshRequest\x12F\n" +
-	"\x0elogout_request\x18\t \x01(\v2\x1d.packets.LogoutRequestMessageH\x00R\rlogoutRequest\x12=\n" +
-	"\vok_response\x18\n" +
-	" \x01(\v2\x1a.packets.OkResponseMessageH\x00R\n" +
+	"unregister\x18\x06 \x01(\v2\x1a.packets.UnregisterMessageH\x00R\n" +
+	"unregister\x12=\n" +
+	"\vok_response\x18\a \x01(\v2\x1a.packets.OkResponseMessageH\x00R\n" +
 	"okResponse\x12C\n" +
-	"\rdeny_response\x18\v \x01(\v2\x1c.packets.DenyResponseMessageH\x00R\fdenyResponse\x12'\n" +
-	"\x03jwt\x18\f \x01(\v2\x13.packets.JwtMessageH\x00R\x03jwtB\x05\n" +
-	"\x03msgB\rZ\vpkg/packetsb\x06proto3"
+	"\rdeny_response\x18\b \x01(\v2\x1c.packets.DenyResponseMessageH\x00R\fdenyResponseB\x05\n" +
+	"\x03msg\"\xf2\x04\n" +
+	"\aMessage\x12'\n" +
+	"\x03jwt\x18\x01 \x01(\v2\x13.packets.JwtMessageH\x00R\x03jwt\x124\n" +
+	"\x05login\x18\x02 \x01(\v2\x1c.packets.LoginRequestMessageH\x00R\x05login\x12=\n" +
+	"\bregister\x18\x03 \x01(\v2\x1f.packets.RegisterRequestMessageH\x00R\bregister\x12:\n" +
+	"\arefresh\x18\x04 \x01(\v2\x1e.packets.RefreshRequestMessageH\x00R\arefresh\x127\n" +
+	"\x06logout\x18\x05 \x01(\v2\x1d.packets.LogoutRequestMessageH\x00R\x06logout\x12;\n" +
+	"\bnew_room\x18\x06 \x01(\v2\x1e.packets.NewRoomRequestMessageH\x00R\anewRoom\x12C\n" +
+	"\rrooms_request\x18\a \x01(\v2\x1c.packets.RoomsRequestMessageH\x00R\froomsRequest\x12F\n" +
+	"\x0erooms_response\x18\b \x01(\v2\x1d.packets.RoomsResponseMessageH\x00R\rroomsResponse\x12=\n" +
+	"\vok_response\x18\t \x01(\v2\x1a.packets.OkResponseMessageH\x00R\n" +
+	"okResponse\x12C\n" +
+	"\rdeny_response\x18\n" +
+	" \x01(\v2\x1c.packets.DenyResponseMessageH\x00R\fdenyResponseB\x06\n" +
+	"\x04typeB\rZ\vpkg/packetsb\x06proto3"
 
 var (
 	file_packets_proto_rawDescOnce sync.Once
@@ -853,40 +1259,53 @@ func file_packets_proto_rawDescGZIP() []byte {
 	return file_packets_proto_rawDescData
 }
 
-var file_packets_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
+var file_packets_proto_msgTypes = make([]protoimpl.MessageInfo, 18)
 var file_packets_proto_goTypes = []any{
 	(*ChatMessage)(nil),            // 0: packets.ChatMessage
 	(*IdMessage)(nil),              // 1: packets.IdMessage
 	(*RegisterMessage)(nil),        // 2: packets.RegisterMessage
 	(*UnregisterMessage)(nil),      // 3: packets.UnregisterMessage
-	(*LoginRequestMessage)(nil),    // 4: packets.LoginRequestMessage
-	(*RegisterRequestMessage)(nil), // 5: packets.RegisterRequestMessage
-	(*RefreshRequestMessage)(nil),  // 6: packets.RefreshRequestMessage
-	(*LogoutRequestMessage)(nil),   // 7: packets.LogoutRequestMessage
-	(*OkResponseMessage)(nil),      // 8: packets.OkResponseMessage
-	(*DenyResponseMessage)(nil),    // 9: packets.DenyResponseMessage
-	(*JwtMessage)(nil),             // 10: packets.JwtMessage
-	(*Packet)(nil),                 // 11: packets.Packet
-	(*timestamppb.Timestamp)(nil),  // 12: google.protobuf.Timestamp
+	(*RoomRegisteredMessage)(nil),  // 4: packets.RoomRegisteredMessage
+	(*JwtMessage)(nil),             // 5: packets.JwtMessage
+	(*LoginRequestMessage)(nil),    // 6: packets.LoginRequestMessage
+	(*RegisterRequestMessage)(nil), // 7: packets.RegisterRequestMessage
+	(*RefreshRequestMessage)(nil),  // 8: packets.RefreshRequestMessage
+	(*LogoutRequestMessage)(nil),   // 9: packets.LogoutRequestMessage
+	(*NewRoomRequestMessage)(nil),  // 10: packets.NewRoomRequestMessage
+	(*NewRoomResponseMessage)(nil), // 11: packets.NewRoomResponseMessage
+	(*RoomsRequestMessage)(nil),    // 12: packets.RoomsRequestMessage
+	(*RoomsResponseMessage)(nil),   // 13: packets.RoomsResponseMessage
+	(*OkResponseMessage)(nil),      // 14: packets.OkResponseMessage
+	(*DenyResponseMessage)(nil),    // 15: packets.DenyResponseMessage
+	(*Packet)(nil),                 // 16: packets.Packet
+	(*Message)(nil),                // 17: packets.Message
+	(*timestamppb.Timestamp)(nil),  // 18: google.protobuf.Timestamp
 }
 var file_packets_proto_depIdxs = []int32{
-	12, // 0: packets.ChatMessage.timestamp:type_name -> google.protobuf.Timestamp
-	0,  // 1: packets.Packet.chat:type_name -> packets.ChatMessage
-	1,  // 2: packets.Packet.id:type_name -> packets.IdMessage
-	2,  // 3: packets.Packet.register:type_name -> packets.RegisterMessage
-	3,  // 4: packets.Packet.unregister:type_name -> packets.UnregisterMessage
-	4,  // 5: packets.Packet.login_request:type_name -> packets.LoginRequestMessage
-	5,  // 6: packets.Packet.register_request:type_name -> packets.RegisterRequestMessage
-	6,  // 7: packets.Packet.refresh_request:type_name -> packets.RefreshRequestMessage
-	7,  // 8: packets.Packet.logout_request:type_name -> packets.LogoutRequestMessage
-	8,  // 9: packets.Packet.ok_response:type_name -> packets.OkResponseMessage
-	9,  // 10: packets.Packet.deny_response:type_name -> packets.DenyResponseMessage
-	10, // 11: packets.Packet.jwt:type_name -> packets.JwtMessage
-	12, // [12:12] is the sub-list for method output_type
-	12, // [12:12] is the sub-list for method input_type
-	12, // [12:12] is the sub-list for extension type_name
-	12, // [12:12] is the sub-list for extension extendee
-	0,  // [0:12] is the sub-list for field type_name
+	18, // 0: packets.ChatMessage.timestamp:type_name -> google.protobuf.Timestamp
+	4,  // 1: packets.IdMessage.room:type_name -> packets.RoomRegisteredMessage
+	11, // 2: packets.RoomsResponseMessage.rooms:type_name -> packets.NewRoomResponseMessage
+	0,  // 3: packets.Packet.chat:type_name -> packets.ChatMessage
+	1,  // 4: packets.Packet.id:type_name -> packets.IdMessage
+	2,  // 5: packets.Packet.register:type_name -> packets.RegisterMessage
+	3,  // 6: packets.Packet.unregister:type_name -> packets.UnregisterMessage
+	14, // 7: packets.Packet.ok_response:type_name -> packets.OkResponseMessage
+	15, // 8: packets.Packet.deny_response:type_name -> packets.DenyResponseMessage
+	5,  // 9: packets.Message.jwt:type_name -> packets.JwtMessage
+	6,  // 10: packets.Message.login:type_name -> packets.LoginRequestMessage
+	7,  // 11: packets.Message.register:type_name -> packets.RegisterRequestMessage
+	8,  // 12: packets.Message.refresh:type_name -> packets.RefreshRequestMessage
+	9,  // 13: packets.Message.logout:type_name -> packets.LogoutRequestMessage
+	10, // 14: packets.Message.new_room:type_name -> packets.NewRoomRequestMessage
+	12, // 15: packets.Message.rooms_request:type_name -> packets.RoomsRequestMessage
+	13, // 16: packets.Message.rooms_response:type_name -> packets.RoomsResponseMessage
+	14, // 17: packets.Message.ok_response:type_name -> packets.OkResponseMessage
+	15, // 18: packets.Message.deny_response:type_name -> packets.DenyResponseMessage
+	19, // [19:19] is the sub-list for method output_type
+	19, // [19:19] is the sub-list for method input_type
+	19, // [19:19] is the sub-list for extension type_name
+	19, // [19:19] is the sub-list for extension extendee
+	0,  // [0:19] is the sub-list for field type_name
 }
 
 func init() { file_packets_proto_init() }
@@ -894,18 +1313,25 @@ func file_packets_proto_init() {
 	if File_packets_proto != nil {
 		return
 	}
-	file_packets_proto_msgTypes[11].OneofWrappers = []any{
+	file_packets_proto_msgTypes[16].OneofWrappers = []any{
 		(*Packet_Chat)(nil),
 		(*Packet_Id)(nil),
 		(*Packet_Register)(nil),
 		(*Packet_Unregister)(nil),
-		(*Packet_LoginRequest)(nil),
-		(*Packet_RegisterRequest)(nil),
-		(*Packet_RefreshRequest)(nil),
-		(*Packet_LogoutRequest)(nil),
 		(*Packet_OkResponse)(nil),
 		(*Packet_DenyResponse)(nil),
-		(*Packet_Jwt)(nil),
+	}
+	file_packets_proto_msgTypes[17].OneofWrappers = []any{
+		(*Message_Jwt)(nil),
+		(*Message_Login)(nil),
+		(*Message_Register)(nil),
+		(*Message_Refresh)(nil),
+		(*Message_Logout)(nil),
+		(*Message_NewRoom)(nil),
+		(*Message_RoomsRequest)(nil),
+		(*Message_RoomsResponse)(nil),
+		(*Message_OkResponse)(nil),
+		(*Message_DenyResponse)(nil),
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
@@ -913,7 +1339,7 @@ func file_packets_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_packets_proto_rawDesc), len(file_packets_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   12,
+			NumMessages:   18,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

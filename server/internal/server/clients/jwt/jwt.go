@@ -61,6 +61,44 @@ func NewRefreshToken(userId string) (refreshToken string, refreshTokenExpiration
 	return refresh, refreshEx, refreshJti, nil
 }
 
+func IsValidAccessToken(token string, a *AccessToken) (AccessToken, error) {
+	if token == "" {
+		reason := "token not provied"
+		return *a, errors.New(reason)
+	}
+
+	t, err := Validate(token, a)
+	switch {
+	case err != nil:
+		reason := fmt.Sprintf("error validating token: %v", err)
+		return *a, errors.New(reason)
+	case a.Type != "access":
+		reason := "token is not access token"
+		return *a, errors.New(reason)
+	}
+
+	return *t, nil
+}
+
+func IsValidRefreshToken(token string, r *RefreshToken) (RefreshToken, error) {
+	if token == "" {
+		reason := "token not provied"
+		return *r, errors.New(reason)
+	}
+
+	t, err := Validate(token, r)
+	switch {
+	case err != nil:
+		reason := fmt.Sprintf("error validating token: %v", err)
+		return *r, errors.New(reason)
+	case r.Type != "refresh":
+		reason := "token is not refresh token"
+		return *r, errors.New(reason)
+	}
+
+	return *t, nil
+}
+
 func Validate[T jwt.Claims](tokenStr string, out T) (T, error) {
 	token, err := jwt.ParseWithClaims(tokenStr, out, func(t *jwt.Token) (interface{}, error) {
 		// Check the signing method

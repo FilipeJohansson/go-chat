@@ -1,13 +1,12 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router";
 import { clearTokens, getTokens, saveTokens } from "../internal/tokens";
-import { Packet, RefreshRequestMessage } from "../proto/packets";
+import { Message, RefreshRequestMessage } from "../proto/packets";
 
 export function Refresh() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (getTokens()) navigate("/chat")
     handleRefresh()
   }, [])
 
@@ -19,17 +18,20 @@ export function Refresh() {
       return
     }
 
-    const refreshReq: RefreshRequestMessage = RefreshRequestMessage.create({ refreshToken })
-    const packet: Packet = Packet.create({ refreshRequest: refreshReq })
-    sendRefreshPacket(packet)
+    clearTokens()
+
+    const refreshReq: RefreshRequestMessage = RefreshRequestMessage.create()
+    const message: Message = Message.create({ refresh: refreshReq })
+    sendRefreshPacket(message, refreshToken)
   }
 
-  const sendRefreshPacket = (packet: Packet): void => {
-    const binary: Uint8Array = Packet.encode(packet).finish()
+  const sendRefreshPacket = (message: Message, refreshToken: string): void => {
+    const binary: Uint8Array = Message.encode(message).finish()
     fetch("http://localhost:8080/refresh", {
       method: "POST",
       headers: {
-        "Content-Type": "application/octet-stream"
+        "Content-Type": "application/octet-stream",
+        "Authorization": refreshToken,
       },
       body: binary,
       mode: "cors"
@@ -37,9 +39,15 @@ export function Refresh() {
     .then((response: Response): Promise<ArrayBuffer> => response.arrayBuffer())
     .then((buffer: ArrayBuffer) => {
       const data: Uint8Array = new Uint8Array(buffer)
-      const packet: Packet = Packet.decode(data)
-      const accessToken: string | undefined = packet.jwt?.accessToken
-      const refreshToken: string | undefined = packet.jwt?.refreshToken
+      const message: Message = Message.decode(data)
+      if (!message.jwt) {
+        console.log("Message not type JWT message", message)
+        navigate("/login")
+        return
+      }
+
+      const accessToken: string | undefined = message.jwt.accessToken
+      const refreshToken: string | undefined = message.jwt.refreshToken
 
       if (!accessToken || !refreshToken) {
         console.log("refresh: error getting access or refresh token")
@@ -49,7 +57,6 @@ export function Refresh() {
       }
 
       saveTokens({ accessToken, refreshToken })
-
       navigate("/chat")     
     })
     .catch(error => console.error("Erro:", error));

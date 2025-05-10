@@ -6,9 +6,6 @@ import (
 	_ "embed"
 	"log"
 	"net/http"
-	"sort"
-
-	"time"
 
 	"server/internal/server/db"
 	"server/internal/server/objects"
@@ -40,7 +37,7 @@ type ClientStateHandler interface {
 	SetClient(client ClientInterfacer)
 
 	OnEnter()
-	HandleMessage(senderId uint64, message packets.Msg)
+	HandleMessage(senderId uint64, roomId uint64, message packets.Pkt)
 
 	// Cleanup the state handle and perform any alst actions
 	OnExit()
@@ -53,22 +50,24 @@ type ClientInterfacer interface {
 	Id() uint64
 	UserId() string
 	Username() string
-	ProcessMessage(senderId uint64, message packets.Msg)
+	Room() *Room
 
 	SetState(state ClientStateHandler)
 	GetState() ClientStateHandler
 
+	ProcessMessage(senderId uint64, roomId uint64, message packets.Pkt)
+
 	// Puts data from this client into the write pump
-	SocketSend(message packets.Msg)
+	SocketSend(message packets.Pkt)
 
 	// Puts data from another client into the write pump
-	SocketSendAs(message packets.Msg, senderId uint64)
+	SocketSendAs(message packets.Pkt, senderId uint64, roomId uint64)
 
 	// Foward message to another client for processing
-	PassToPeer(message packets.Msg, peerId uint64)
+	PassToPeer(message packets.Pkt, peerId uint64)
 
 	// Forward message to all other clients for processing
-	Broadcast(message packets.Msg)
+	Broadcast(message packets.Pkt, roomId uint64)
 
 	// Pump data from the connected socket directly to the client
 	ReadPump()
@@ -83,19 +82,9 @@ type ClientInterfacer interface {
 	Close(reason string)
 }
 
-type StoragedMessage struct {
-	Timestamp      time.Time
-	Msg            *packets.Packet_Chat
-	SenderId       uint64
-	SenderUsername string
-}
-
 // The hub is the central point of communication between all connected clients
 type Hub struct {
-	Clients *objects.SharedCollection[ClientInterfacer]
-
-	// Last messages sent from clients, so it can be sent to new clients
-	LastMessages *objects.SharedCollection[StoragedMessage]
+	Rooms *objects.SharedCollection[Room]
 
 	// Packets in this channel will be processed by all connected clients except the sender
 	BroadcastChan chan *packets.Packet
@@ -116,8 +105,7 @@ func NewHub() *Hub {
 	}
 
 	return &Hub{
-		Clients:        objects.NewSharedCollection[ClientInterfacer](),
-		LastMessages:   objects.NewSharedCollection[StoragedMessage](),
+		Rooms:          objects.NewSharedCollection[Room](),
 		BroadcastChan:  make(chan *packets.Packet, 256),
 		RegisterChan:   make(chan ClientInterfacer),
 		UnregisterChan: make(chan ClientInterfacer),
@@ -135,17 +123,19 @@ func (h *Hub) Run() {
 	for {
 		select {
 		case client := <-h.RegisterChan:
-			h.RemoveOldMessages(h.LastMessages)
-			client.Initialize(h.Clients.Add(client))
+			client.Room().RemoveOldMessages(client.Room().LastMessages)
+			client.Initialize(client.Room().Clients.Add(client))
 		case client := <-h.UnregisterChan:
-			client.Broadcast(packets.NewUnregister(client.Id()))
-			h.Clients.Remove(client.Id())
+			client.Broadcast(packets.NewUnregister(client.Id()), client.Room().Id)
+			client.Room().Clients.Remove(client.Id())
 		case packet := <-h.BroadcastChan:
-			h.Clients.ForEach(func(clientId uint64, client ClientInterfacer) {
-				if clientId != packet.SenderId && client.GetState() != nil {
-					client.ProcessMessage(packet.SenderId, packet.Msg)
-				}
-			})
+			if room, found := h.Rooms.Get(packet.RoomId); found {
+				room.Clients.ForEach(func(clientId uint64, client ClientInterfacer) {
+					if clientId != packet.SenderId && client.GetState() != nil {
+						client.ProcessMessage(packet.SenderId, packet.RoomId, packet.Msg)
+					}
+				})
+			}
 		}
 	}
 }
@@ -170,25 +160,4 @@ func (h *Hub) Serve(
 
 	go client.WritePump()
 	go client.ReadPump()
-}
-
-func (h *Hub) OrderLastMessages(lastMessages *objects.SharedCollection[StoragedMessage]) []StoragedMessage {
-	messages := make([]StoragedMessage, 0, lastMessages.Len())
-	lastMessages.ForEach(func(id uint64, sm StoragedMessage) {
-		messages = append(messages, sm)
-	})
-
-	sort.Slice(messages, func(i, j int) bool {
-		return messages[i].Timestamp.Before(messages[j].Timestamp)
-	})
-
-	return messages
-}
-
-func (h *Hub) RemoveOldMessages(lastMessages *objects.SharedCollection[StoragedMessage]) {
-	lastMessages.ForEach(func(id uint64, sm StoragedMessage) {
-		if time.Since(sm.Timestamp) >= 5*time.Minute {
-			lastMessages.Remove(id)
-		}
-	})
 }

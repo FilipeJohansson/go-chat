@@ -5,31 +5,51 @@ import "google/protobuf/timestamp.proto";
 package packets;
 option go_package = "pkg/packets";
 
+// WS
 message ChatMessage { google.protobuf.Timestamp timestamp = 1; string senderUsername = 2; string msg = 3; }
-message IdMessage { uint64 id = 1; string username = 2; }
+message IdMessage { uint64 id = 1; string username = 2; RoomRegisteredMessage room = 3; }
 message RegisterMessage { uint64 id = 1; string username = 2; }
 message UnregisterMessage { uint64 id = 1; }
+message RoomRegisteredMessage { uint64 id = 1; string ownerId = 2; string name = 3; }
+
+// HTTP
+message JwtMessage { string access_token = 1; string refresh_token = 2; }
 message LoginRequestMessage { string username = 1; string password = 2; }
 message RegisterRequestMessage { string username = 1; string password = 2; }
-message RefreshRequestMessage { string refresh_token = 1; }
-message LogoutRequestMessage { string refresh_token = 1; }
+message RefreshRequestMessage { }
+message LogoutRequestMessage { }
+message NewRoomRequestMessage { uint64 roomId = 1; string name = 2; }
+message NewRoomResponseMessage { uint64 roomId = 1; string ownerId = 2; string name = 3; }
+message RoomsRequestMessage {  }
+message RoomsResponseMessage {  repeated NewRoomResponseMessage rooms = 1; }
+
 message OkResponseMessage { }
 message DenyResponseMessage { string reason = 1; }
-message JwtMessage { string access_token = 1; string refresh_token = 2; }
 
 message Packet {
   uint64 sender_id = 1;
+  uint64 room_id = 2;
   oneof msg {
-    ChatMessage chat = 2;
-    IdMessage id = 3;
-    RegisterMessage register = 4;
-    UnregisterMessage unregister = 5;
-    LoginRequestMessage login_request = 6;
-    RegisterRequestMessage register_request = 7;
-    RefreshRequestMessage refresh_request = 8;
-    LogoutRequestMessage logout_request = 9;
-    OkResponseMessage ok_response = 10;
-    DenyResponseMessage deny_response = 11;
-    JwtMessage jwt = 12;
+    ChatMessage chat = 3;
+    IdMessage id = 4;
+    RegisterMessage register = 5;
+    UnregisterMessage unregister = 6;
+    OkResponseMessage ok_response = 7;
+    DenyResponseMessage deny_response = 8;
+  }
+}
+
+message Message {
+  oneof type {
+    JwtMessage jwt = 1;
+    LoginRequestMessage login = 2;
+    RegisterRequestMessage register = 3;
+    RefreshRequestMessage refresh = 4;
+    LogoutRequestMessage logout = 5;
+    NewRoomRequestMessage new_room = 6;
+    RoomsRequestMessage rooms_request = 7;
+    RoomsResponseMessage rooms_response = 8;
+    OkResponseMessage ok_response = 9;
+    DenyResponseMessage deny_response = 10;
   }
 }

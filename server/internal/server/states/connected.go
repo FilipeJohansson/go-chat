@@ -29,17 +29,17 @@ func (c *Connected) SetClient(client server.ClientInterfacer) {
 }
 
 func (c *Connected) OnEnter() {
-	c.client.SocketSend(packets.NewId(c.client.Id(), c.client.Username()))
+	c.client.SocketSend(packets.NewId(c.client.Id(), c.client.Username(), c.client.Room().Id, c.client.Room().OwnerId, c.client.Room().Name))
 }
 
-func (c *Connected) HandleMessage(senderId uint64, message packets.Msg) {
+func (c *Connected) HandleMessage(senderId uint64, roomId uint64, message packets.Pkt) {
 	if senderId == c.client.Id() {
 		// This message was sent by our own client, so broadcast it to everyone else
-		c.client.Broadcast(message)
+		c.client.Broadcast(message, roomId)
 	} else {
 		// Another client interfacer passed this onto us, or it was broadcast from the hub,
 		// so forward it to our own client
-		c.client.SocketSendAs(message, senderId)
+		c.client.SocketSendAs(message, senderId, roomId)
 	}
 }
 
