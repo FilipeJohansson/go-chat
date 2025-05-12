@@ -1,17 +1,15 @@
-package clients
+package ws
 
 import (
 	"errors"
 	"fmt"
 	"log"
 	"net/http"
+	"server/internal/client"
+	"server/internal/jwt"
+	"server/pkg/packets"
 	"strconv"
 	"time"
-
-	"server/internal/server"
-	"server/internal/server/clients/jwt"
-	"server/internal/server/states"
-	"server/pkg/packets"
 
 	"github.com/gorilla/websocket"
 	"google.golang.org/protobuf/proto"
@@ -26,16 +24,14 @@ type WebSocketClient struct {
 	id       uint64
 	userId   string
 	username string
-	room     *server.Room
+	roomId   uint64
 	conn     *websocket.Conn
-	hub      *server.Hub
+	hub      *Hub
 	sendChan chan *packets.Packet // To send messages from server to client. WritePump consumes it
-	state    server.ClientStateHandler
 	logger   *log.Logger
-	dbTx     *server.DbTx
 }
 
-func NewWebSocketClient(hub *server.Hub, writer http.ResponseWriter, request *http.Request) (server.ClientInterfacer, error) {
+func NewWebSocketClient(hub *Hub, service Service, writer http.ResponseWriter, request *http.Request) (client.ClientInterfacer, error) {
 	token := request.URL.Query().Get("token")
 	roomStr := request.URL.Query().Get("room")
 	accessToken, err := jwt.IsValidAccessToken(token, &jwt.AccessToken{})
@@ -51,7 +47,7 @@ func NewWebSocketClient(hub *server.Hub, writer http.ResponseWriter, request *ht
 		return nil, err
 	}
 
-	room, found := hub.Rooms.Get(roomId)
+	_, found := hub.Rooms.Get(roomId)
 	if !found {
 		reason := fmt.Sprintf("unable to find room id %v", roomId)
 		log.Println(reason)
@@ -71,15 +67,14 @@ func NewWebSocketClient(hub *server.Hub, writer http.ResponseWriter, request *ht
 
 	c := &WebSocketClient{
 		userId:   accessToken.Subject,
-		room:     &room,
+		roomId:   roomId,
 		hub:      hub,
 		conn:     conn,
 		sendChan: make(chan *packets.Packet, 256),
 		logger:   log.New(log.Writer(), "Client unknown: ", log.LstdFlags),
-		dbTx:     hub.NewDbTx(),
 	}
 
-	username, err := c.dbTx.Queries.GetUsernameById(c.dbTx.Ctx, c.userId)
+	username, err := service.GetUsernameById(request.Context(), c.userId)
 	if err != nil {
 		username = fmt.Sprintf("Client %v", c.id)
 		c.logger.Printf("Error getting username: %v", err)
@@ -93,10 +88,9 @@ func (c *WebSocketClient) Initialize(id uint64) {
 	c.id = id
 	c.logger.SetPrefix(fmt.Sprintf("Client %d: ", c.id))
 
-	c.SetState(&states.Connected{})
-
 	// Check if has another client with the same userID connected. If yes, drop it
-	c.room.Clients.ForEach(func(clientId uint64, client server.ClientInterfacer) {
+	room, _ := c.hub.Rooms.Get(c.roomId)
+	room.Clients.ForEach(func(clientId uint64, client client.ClientInterfacer) {
 		if clientId == c.Id() {
 			return
 		}
@@ -107,18 +101,19 @@ func (c *WebSocketClient) Initialize(id uint64) {
 		}
 	})
 
-	c.Broadcast(packets.NewRegister(c.id, c.username), c.room.Id)
+	c.SocketSend(packets.NewId(c.Id(), c.Username(), room.Id, room.OwnerId, room.Name))
+	c.Broadcast(packets.NewRegister(c.id, c.username), c.roomId)
 
 	c.logger.Printf("Fowarding already connected users to client")
-	c.room.Clients.ForEach(func(clientId uint64, client server.ClientInterfacer) {
+	room.Clients.ForEach(func(clientId uint64, client client.ClientInterfacer) {
 		if clientId != c.Id() {
 			// Already connected client (client) is forwarding their register to the newer client (c)
 			client.PassToPeer(packets.NewRegister(clientId, client.Username()), c.Id())
 		}
 	})
 
-	for _, sm := range c.room.OrderLastMessages(c.room.LastMessages) {
-		c.SocketSendAs(sm.Msg, sm.SenderId, c.room.Id)
+	for _, sm := range room.OrderLastMessages(room.LastMessages) {
+		c.SocketSendAs(sm.Msg, sm.SenderId, c.roomId)
 	}
 }
 
@@ -134,33 +129,23 @@ func (c *WebSocketClient) Username() string {
 	return c.username
 }
 
-func (c *WebSocketClient) Room() *server.Room {
-	return c.room
-}
-
-func (c *WebSocketClient) SetState(state server.ClientStateHandler) {
-	if c.state != nil {
-		c.state.OnExit()
-	}
-
-	c.state = state
-
-	if c.state != nil {
-		c.state.SetClient(c)
-		c.state.OnEnter()
-	}
-}
-
-func (c *WebSocketClient) GetState() server.ClientStateHandler {
-	return c.state
+func (c *WebSocketClient) RoomId() uint64 {
+	return c.roomId
 }
 
 func (c *WebSocketClient) ProcessMessage(senderId uint64, roomId uint64, message packets.Pkt) {
-	c.state.HandleMessage(senderId, roomId, message)
+	if senderId == c.Id() {
+		// This message was sent by our own client, so broadcast it to everyone else
+		c.Broadcast(message, roomId)
+	} else {
+		// Another client interfacer passed this onto us, or it was broadcast from the hub,
+		// so forward it to our own client
+		c.SocketSendAs(message, senderId, roomId)
+	}
 }
 
 func (c *WebSocketClient) SocketSend(message packets.Pkt) {
-	c.SocketSendAs(message, c.id, c.room.Id)
+	c.SocketSendAs(message, c.id, c.roomId)
 }
 
 func (c *WebSocketClient) SocketSendAs(message packets.Pkt, senderId uint64, roomId uint64) {
@@ -172,8 +157,9 @@ func (c *WebSocketClient) SocketSendAs(message packets.Pkt, senderId uint64, roo
 }
 
 func (c *WebSocketClient) PassToPeer(message packets.Pkt, peerId uint64) {
-	if peer, exists := c.room.Clients.Get(peerId); exists {
-		peer.ProcessMessage(c.id, c.room.Id, message)
+	room, _ := c.hub.Rooms.Get(c.roomId)
+	if peer, exists := room.Clients.Get(peerId); exists {
+		peer.ProcessMessage(c.id, c.roomId, message)
 	}
 }
 
@@ -218,10 +204,14 @@ func (c *WebSocketClient) ReadPump() {
 		}
 
 		packet.SenderId = c.id
-		packet.RoomId = c.room.Id
+		packet.RoomId = c.roomId
 
 		if msg, ok := packet.Msg.(*packets.Packet_Chat); ok {
-			c.room.LastMessages.Add(server.StoragedMessage{
+			room, found := c.hub.Rooms.Get(c.roomId)
+			if !found {
+				return
+			}
+			room.LastMessages.Add(StoragedMessage{
 				Timestamp:      time.Now(),
 				Msg:            msg,
 				SenderUsername: c.username,
@@ -281,14 +271,8 @@ func (c *WebSocketClient) WritePump() {
 	}
 }
 
-func (c *WebSocketClient) DbTx() *server.DbTx {
-	return c.dbTx
-}
-
 func (c *WebSocketClient) Close(reason string) {
 	c.logger.Printf("Closing client connection because: %s", reason)
-
-	c.SetState(nil)
 
 	c.conn.Close()
 

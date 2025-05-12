@@ -1,7 +1,8 @@
-package server
+package ws
 
 import (
-	"server/internal/server/objects"
+	"server/internal/client"
+	"server/internal/objects"
 	"server/pkg/packets"
 	"sort"
 	"time"
@@ -18,7 +19,7 @@ type Room struct {
 	Id      uint64
 	OwnerId string
 	Name    string
-	Clients *objects.SharedCollection[ClientInterfacer]
+	Clients *objects.SharedCollection[client.ClientInterfacer]
 
 	// Last messages sent from clients, so it can be sent to new clients
 	LastMessages *objects.SharedCollection[StoragedMessage]
@@ -29,7 +30,7 @@ func NewRoom(id uint64, ownerId string, name string) *Room {
 		Id:           id,
 		OwnerId:      ownerId,
 		Name:         name,
-		Clients:      objects.NewSharedCollection[ClientInterfacer](),
+		Clients:      objects.NewSharedCollection[client.ClientInterfacer](),
 		LastMessages: objects.NewSharedCollection[StoragedMessage](),
 	}
 }
