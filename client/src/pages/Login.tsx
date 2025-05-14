@@ -1,8 +1,8 @@
 import { LoaderCircle } from "lucide-react"
 import { useEffect, useState } from "react"
 import { useNavigate } from "react-router"
-import { clearTokens, getTokens, saveTokens } from "../internal/tokens"
-import { LoginRequestMessage, Message } from "../proto/packets"
+import { authenticate } from "../internal/lib/auth"
+import { getTokens } from "../internal/lib/tokens"
 
 export function Login() {
   const navigate = useNavigate()
@@ -13,8 +13,8 @@ export function Login() {
   const [error, setError] = useState<string | undefined>(undefined)
 
   useEffect(() => {
-    if (getTokens()) navigate("/chat")
-  }, [])
+    if (getTokens()) navigate("/lobby")
+  }, [navigate])
 
   const handleLogin = (): void => {
     setError(undefined)
@@ -24,50 +24,16 @@ export function Login() {
       return
     }
 
-    const loginReq: LoginRequestMessage = LoginRequestMessage.create({ username, password })
-    const message: Message = Message.create({ login: loginReq })
-    sendLoginPacket(message)
-  }
-
-  const sendLoginPacket = (message: Message): void => {
     setLoading(true)
-
-    const binary: Uint8Array = Message.encode(message).finish()
-    fetch("http://localhost:8080/login", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/octet-stream"
-      },
-      body: binary,
-      mode: "cors"
-    })
-    .then((response: Response): Promise<ArrayBuffer> => response.arrayBuffer())
-    .then((buffer: ArrayBuffer) => {
-      const data = new Uint8Array(buffer)
-      const message: Message = Message.decode(data)
-      console.log("Server Response:", message)
-      console.log(message)
-
-      if (message.denyResponse) setError(message.denyResponse.reason)
-      if (!message.jwt) {
-        console.log("Message not type JWT message")
-        return
-      }
-
-      const accessToken: string | undefined = message.jwt.accessToken
-      const refreshToken: string | undefined = message.jwt.refreshToken
-
-      if (!accessToken || !refreshToken) {
-        console.log("login: error getting access or refresh token")
-        clearTokens()
-        return
-      }
-
-      saveTokens({ accessToken, refreshToken })
-      navigate("/chat")
-    })
-    .catch(error => console.error("Erro:", error))
-    .finally(() => setLoading(false))
+    authenticate(username, password)
+      .then((resp: boolean) => {
+        if (resp) {
+          navigate("/lobby")
+          return
+        }
+      })
+      .catch((error) => setError(error))
+      .finally(() => setLoading(false))
   }
 
   return (

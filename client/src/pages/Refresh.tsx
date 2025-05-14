@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router";
-import { clearTokens, getTokens, saveTokens } from "../internal/tokens";
+import { clearTokens, getTokens, saveTokens } from "../internal/lib/tokens";
 import { Message, RefreshRequestMessage } from "../proto/packets";
 
 export function Refresh() {

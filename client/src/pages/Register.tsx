@@ -1,8 +1,8 @@
 import { LoaderCircle } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
-import { getTokens } from "../internal/tokens";
-import { Message, RegisterRequestMessage } from "../proto/packets";
+import { register } from "../internal/lib/auth";
+import { getTokens } from "../internal/lib/tokens";
 
 export function Register() {
   const navigate = useNavigate();
@@ -15,7 +15,7 @@ export function Register() {
 
   useEffect(() => {
     if (getTokens()) navigate("/chat")
-  }, [])
+  }, [navigate])
 
   const handleRegister = (): void => {
     setError(undefined)
@@ -32,33 +32,10 @@ export function Register() {
 
     //! validate username and password min reqs
 
-    const registerReq: RegisterRequestMessage = RegisterRequestMessage.create({ username, password })
-    const message: Message = Message.create({ register: registerReq })
-    sendRegisterPacket(message)
-  }
-
-  const sendRegisterPacket = (packet: Message): void => {
     setLoading(true)
-
-    const binary: Uint8Array = Message.encode(packet).finish()
-    fetch("http://localhost:8080/login", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/octet-stream"
-      },
-      body: binary,
-      mode: "cors"
-    })
-    .then((response: Response): Promise<ArrayBuffer> => response.arrayBuffer())
-    .then((buffer: ArrayBuffer): void => {
-      const data = new Uint8Array(buffer)
-      const message: Message = Message.decode(data)
-      console.log("Server Response:", message)
-      if (message.okResponse) navigate("/login")
-      if (message.denyResponse) setError(message.denyResponse.reason)
-    })
-    .catch(error => console.error("Erro:", error))
-    .finally(() => setLoading(false));
+    register(username, password)
+      .catch((error) => setError(error))
+      .finally(() => setLoading(false))
   }
 
   return (

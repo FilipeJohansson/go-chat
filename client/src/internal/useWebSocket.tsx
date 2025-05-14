@@ -1,19 +1,10 @@
 import { useEffect, useState } from "react"
 import { useNavigate } from "react-router"
-import { ChatMessage, IdMessage, LogoutRequestMessage, Message as Msg, Packet } from "../proto/packets"
-import { Tokens, clearTokens, getTokens } from "./tokens"
+import { ChatMessage, IdMessage, Packet } from "../proto/packets"
+import { User } from "./lib/auth"
+import { Room } from "./lib/rooms"
+import { Tokens, clearTokens, getTokens } from "./lib/tokens"
 import { WebSocketClient } from "./websocket"
-
-export interface User {
-  id: number,
-  name: string,
-}
-
-export interface Room {
-  roomId: number,
-  ownerId: string,
-  name: string,
-}
 
 export interface Message {
   timestamp: Date,
@@ -33,7 +24,7 @@ export function useWebSocket(roomId: string | null) {
   useEffect(() => {
     if (!roomId) {
       console.log("Error getting room id")
-      navigate("/rooms")
+      navigate("/lobby")
     }
 
     const client: WebSocketClient = WebSocketClient.getInstance()
@@ -47,7 +38,7 @@ export function useWebSocket(roomId: string | null) {
       setIsConnected(false)
       console.log("Disconnected from WebSocket server")
 
-      navigate("/refresh")
+      navigate("/lobby")
     }
 
     const onPacketReceived = (packet: Packet) => {
@@ -149,22 +140,6 @@ export function useWebSocket(roomId: string | null) {
   }
 
   const disconnect = () => {
-    const refreshToken: string = getTokens()!.refreshToken
-    const logoutRequest: LogoutRequestMessage = LogoutRequestMessage.create()
-    const message: Msg = Msg.create<Msg>({ logout: logoutRequest })
-    const binary: Uint8Array = Msg.encode(message).finish()
-    fetch("http://localhost:8080/logout", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/octet-stream",
-        "Authorization": refreshToken,
-      },
-      body: binary,
-      mode: "cors"
-    })
-    .catch(error => console.error("Erro:", error))
-    clearTokens()
-
     WebSocketClient.getInstance().close(1000, "user logout")
   }
 
